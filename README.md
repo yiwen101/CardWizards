@@ -19,6 +19,9 @@ Tech Stack:
   Herz:
   
   Kitex:
+    documentation: https://www.cloudwego.io/zh/docs/kitex/overview/
+    example: https://github.com/cloudwego/kitex-examples
+    github: https://github.com/cloudwego/kitex
   
 	
   
