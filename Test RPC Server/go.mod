@@ -9,4 +9,3 @@ require (
 	github.com/cloudwego/kitex v0.5.2
 )
 
-
