@@ -1,4 +1,4 @@
-module PoC
+module github.com/yiwen101/TiktokXOrbital-CardWizards
 
 go 1.20
 

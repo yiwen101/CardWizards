@@ -2,7 +2,7 @@
 package noteservice
 
 import (
-	demonote "PoC/kitex_gen/demonote"
+	demonote "github.com/yiwen101/TiktokXOrbital-CardWizards/kitex_gen/demonote"
 	server "github.com/cloudwego/kitex/server"
 )
 
