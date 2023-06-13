@@ -1,7 +1,7 @@
 package main
 
 import (
-	demonote "github.com/yiwen101/TiktokXOrbital-CardWizards/kitex_gen/demonote/noteservice"
+	demonote "github.com/yiwen101/CardWizards/kitex_gen/demonote/noteservice"
 	"log"
 )
 

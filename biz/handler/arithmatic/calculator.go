@@ -7,7 +7,7 @@ import (
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/protocol/consts"
-	arithmatic "github.com/yiwen101/TiktokXOrbital-CardWizards/biz/model/arithmatic"
+	arithmatic "github.com/yiwen101/CardWizards/biz/model/arithmatic"
 )
 
 // Add .

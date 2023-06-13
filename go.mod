@@ -1,4 +1,4 @@
-module github.com/yiwen101/TiktokXOrbital-CardWizards
+module github.com/yiwen101/CardWizards
 
 go 1.20
 

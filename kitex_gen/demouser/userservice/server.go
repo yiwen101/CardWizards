@@ -2,7 +2,7 @@
 package userservice
 
 import (
-	demouser "github.com/yiwen101/TiktokXOrbital-CardWizards/kitex_gen/demouser"
+	demouser "github.com/yiwen101/CardWizards/kitex_gen/demouser"
 	server "github.com/cloudwego/kitex/server"
 )
 

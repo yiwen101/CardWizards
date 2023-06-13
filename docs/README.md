@@ -19,7 +19,7 @@ Links & Refereces
 Link to Google doc: 
 https://docs.google.com/document/d/1ozqRrvVdwpz_M76d3R9yiwmT_47Dc-hkO5nU0ls2Oj8/edit#
 Link to repository: 
-https://github.com/yiwen101/TiktokXOrbital-CardWizards
+https://github.com/yiwen101/CardWizards
 Link to doc (work in progress): 
 https://yiwen101.github.io/TiktokXOrbital-CardWizards/
 Link to Project log:

@@ -4,7 +4,7 @@ package arithmatic
 
 import (
 	"github.com/cloudwego/hertz/pkg/app/server"
-	arithmatic "github.com/yiwen101/TiktokXOrbital-CardWizards/biz/handler/arithmatic"
+	arithmatic "github.com/yiwen101/CardWizards/biz/handler/arithmatic"
 )
 
 /*

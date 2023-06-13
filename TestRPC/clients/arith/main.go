@@ -6,8 +6,8 @@ import (
 
 	"github.com/cloudwego/kitex/client"
 	"github.com/kitex-contrib/registry-nacos/resolver"
-	"github.com/yiwen101/TiktokXOrbital-CardWizards/kitex_gen/arithmatic"
-	"github.com/yiwen101/TiktokXOrbital-CardWizards/kitex_gen/arithmatic/calculator"
+	"github.com/yiwen101/CardWizards/kitex_gen/arithmatic"
+	"github.com/yiwen101/CardWizards/kitex_gen/arithmatic/calculator"
 )
 
 func main() {

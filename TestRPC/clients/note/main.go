@@ -6,8 +6,8 @@ import (
 
 	"github.com/cloudwego/kitex/client"
 
-	"github.com/yiwen101/TiktokXOrbital-CardWizards/kitex_gen/demonote"
-	"github.com/yiwen101/TiktokXOrbital-CardWizards/kitex_gen/demonote/noteservice"
+	"github.com/yiwen101/CardWizards/kitex_gen/demonote"
+	"github.com/yiwen101/CardWizards/kitex_gen/demonote/noteservice"
 )
 
 func main() {

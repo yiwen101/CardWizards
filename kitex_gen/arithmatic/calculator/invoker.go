@@ -3,7 +3,7 @@
 package calculator
 
 import (
-	arithmatic "github.com/yiwen101/TiktokXOrbital-CardWizards/kitex_gen/arithmatic"
+	arithmatic "github.com/yiwen101/CardWizards/kitex_gen/arithmatic"
 	server "github.com/cloudwego/kitex/server"
 )
 

@@ -1,5 +1,6 @@
 package service
 
+/*
 import (
 	"os"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/cloudwego/kitex/transport"
 	"github.com/kitex-contrib/registry-nacos/resolver"
 )
+
 
 var ServiceNamesToGenericClients = make(map[string]genericclient.Client)
 
@@ -71,3 +73,4 @@ func BuildGenericCallerByReadingIDLsFromPath(relativePath string) {
 
 	}
 }
+*/

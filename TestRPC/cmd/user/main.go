@@ -1,7 +1,7 @@
 package main
 
 import (
-	demouser "github.com/yiwen101/TiktokXOrbital-CardWizards/kitex_gen/demouser/userservice"
+	demouser "github.com/yiwen101/CardWizards/kitex_gen/demouser/userservice"
 	"log"
 )
 

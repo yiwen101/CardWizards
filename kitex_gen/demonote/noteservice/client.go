@@ -3,7 +3,7 @@
 package noteservice
 
 import (
-	demonote "github.com/yiwen101/TiktokXOrbital-CardWizards/kitex_gen/demonote"
+	demonote "github.com/yiwen101/CardWizards/kitex_gen/demonote"
 	"context"
 	client "github.com/cloudwego/kitex/client"
 	callopt "github.com/cloudwego/kitex/client/callopt"

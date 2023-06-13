@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 
-	demonote "github.com/yiwen101/TiktokXOrbital-CardWizards/kitex_gen/demonote"
+	demonote "github.com/yiwen101/CardWizards/kitex_gen/demonote"
 )
 
 // NoteServiceImpl implements the last service interface defined in the IDL.

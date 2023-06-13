@@ -8,8 +8,8 @@ import (
 	"github.com/cloudwego/kitex/pkg/rpcinfo"
 	"github.com/cloudwego/kitex/server"
 	"github.com/kitex-contrib/registry-nacos/registry"
-	arithmatic "github.com/yiwen101/TiktokXOrbital-CardWizards/kitex_gen/arithmatic"
-	calculator "github.com/yiwen101/TiktokXOrbital-CardWizards/kitex_gen/arithmatic/calculator"
+	arithmatic "github.com/yiwen101/CardWizards/kitex_gen/arithmatic"
+	calculator "github.com/yiwen101/CardWizards/kitex_gen/arithmatic/calculator"
 )
 
 // CalculatorImpl implements the last service interface defined in the IDL.
