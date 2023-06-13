@@ -20,9 +20,9 @@ func initMap() {
 	}
 }
 
-func ReadIDLsFromPath(relativePath string) {
+func BuildGenericCallerByReadingIDLsFromPath(relativePath string) {
 	initMap()
-	dirEntries, err := os.ReadDir(relativePath)
+	dirEntries, err := os.ReadFile(relativePath)
 	if err != nil {
 		hlog.Fatalf("new thrift file provider failed: %v", err)
 	}

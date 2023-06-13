@@ -3,15 +3,28 @@
 package main
 
 import (
+	"context"
+	"net/http"
+
+	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/app/server"
+	"github.com/cloudwego/hertz/pkg/common/utils"
 	handler "github.com/yiwen101/TiktokXOrbital-CardWizards/biz/handler"
 )
 
 // customizeRegister registers customize routers.
 func customizedRegister(r *server.Hertz) {
 	r.GET("/ping", handler.Ping)
-
-	// your code ...
+	r.GET("/gateway/:serviceName/:methodName",
+		func(ctx context.Context, c *app.RequestContext) {
+			serviceName := c.Param("serviceName")
+			methodName := c.Param("methodName")
+			//return a http resonse with serviceName and methodName as json field
+			c.JSON(http.StatusOK, utils.H{
+				"serviceName": serviceName,
+				"methodName":  methodName,
+			})
+		})
 }
 
 /*
