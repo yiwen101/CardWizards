@@ -5,13 +5,23 @@ import (
 	"log"
 
 	"github.com/cloudwego/kitex/client"
+	"github.com/kitex-contrib/registry-nacos/resolver"
 	"github.com/yiwen101/TiktokXOrbital-CardWizards/kitex_gen/arithmatic"
 	"github.com/yiwen101/TiktokXOrbital-CardWizards/kitex_gen/arithmatic/calculator"
 )
 
 func main() {
 
-	client3, err := calculator.NewClient("arith", client.WithHostPorts("0.0.0.0:8888"))
+	r, err := resolver.NewDefaultNacosResolver()
+	if err != nil {
+		panic(err)
+	}
+
+	client3, err := calculator.NewClient(
+		"arith",
+		client.WithHostPorts("0.0.0.0:8888"),
+		client.WithResolver(r),
+	)
 	if err != nil {
 		log.Fatal(err)
 	}
