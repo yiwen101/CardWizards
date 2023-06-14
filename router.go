@@ -11,11 +11,13 @@ import (
 	"net/http"
 
 	"github.com/cloudwego/hertz/pkg/app"
+	//"github.com/cloudwego/hertz/pkg/app/client/loadbalance"
 	"github.com/cloudwego/hertz/pkg/app/server"
 	"github.com/cloudwego/hertz/pkg/common/utils"
 	"github.com/cloudwego/kitex/client"
 	"github.com/cloudwego/kitex/client/genericclient"
 	"github.com/cloudwego/kitex/pkg/generic"
+	loadbalance "github.com/cloudwego/kitex/pkg/loadbalance"
 
 	"github.com/kitex-contrib/registry-nacos/resolver"
 	handler "github.com/yiwen101/CardWizards/biz/handler"
@@ -94,10 +96,25 @@ func customizedRegister(r *server.Hertz) {
 					panic(err)
 				}
 				//make a generic client with the generic httprequest
+				// but before that, add a load balance solution
+				/*
+					lb := loadbalance.NewRoundRobin()
+
+					opt1 := loadbalance.Options{
+						RefreshInterval: 10 * time.Second,
+						ExpireInterval:  25 * time.Second,
+					} */
+
+				//lb := loadbalance.NewConsistBalancer()
+				//lb2 := loadbalance.NewWeightedRandomBalancer()
+				lb3 := loadbalance.NewWeightedRoundRobinBalancer()
+
 				cli, err := genericclient.NewClient(
 					"arith",
-					g, client.WithHostPorts("0.0.0.0:8889"),
+					g,
+					client.WithHostPorts("0.0.0.0:8889"),
 					client.WithResolver(resolved),
+					client.WithLoadBalancer(lb3),
 				)
 
 				if err != nil {
