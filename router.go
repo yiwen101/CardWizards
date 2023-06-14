@@ -12,6 +12,7 @@ import (
 	"github.com/cloudwego/hertz/pkg/app/server"
 	"github.com/cloudwego/hertz/pkg/common/utils"
 	"github.com/cloudwego/kitex/client"
+	"github.com/cloudwego/kitex/pkg/generic"
 	"github.com/kitex-contrib/registry-nacos/resolver"
 	handler "github.com/yiwen101/CardWizards/biz/handler"
 	"github.com/yiwen101/CardWizards/kitex_gen/arithmatic"
@@ -68,6 +69,7 @@ func customizedRegister(r *server.Hertz) {
 					log.Fatal(err)
 				}
 				c.JSON(http.StatusOK, utils.H{
+					"message":         "not from generic client",
 					"firstArguement":  resp3.FirstArguement,
 					"secondArguement": resp3.SecondArguement,
 					"result":          resp3.Result_,
@@ -75,6 +77,8 @@ func customizedRegister(r *server.Hertz) {
 
 				// generic: first, make sure idl fulfill the requirement
 				//read the idl file and generate the provider
+				p, err := generic.NewThriftFileProvider("../IDL/arithmatic.thrift")
+
 				//construct a generic httprequest with the provider
 				//make a generic client with the generic httprequest
 				// optional: 构建一个http request
@@ -86,12 +90,17 @@ func customizedRegister(r *server.Hertz) {
 			merchant_id := c.PostForm("merchant_id")
 
 			c.JSON(http.StatusOK, utils.H{
-				"serviceName":     serviceName,
-				"methodName":      methodName,
-				"parameter":       merchant_id,
-				"url.queryargs":   c.Request.URI().QueryArgs(),
-				"url.querystring": c.Request.URI().QueryString(),
-				"url.path":        string(c.Request.URI().Path()),
+				"serviceName":         serviceName,
+				"methodName":          methodName,
+				"parameter":           merchant_id,
+				"url.queryargs":       c.Request.URI().QueryArgs(),
+				"url.querystring":     c.Request.URI().QueryString(),
+				"url.path":            string(c.Request.URI().Path()),
+				"keys":                c.Keys,
+				"request":             c.Request,
+				"request.body":        c.Request.Body(),
+				"request.header":      c.Request.Header,
+				"reqqust.body string": string(c.Request.Body()),
 			})
 
 			//c.String(consts.StatusOK, fmt.Sprintf("%v", c.Request.Body()))
