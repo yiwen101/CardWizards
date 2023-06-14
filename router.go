@@ -3,7 +3,9 @@
 package main
 
 import (
+	"bytes"
 	"context"
+
 	//"fmt"
 	"log"
 	"net/http"
@@ -12,11 +14,11 @@ import (
 	"github.com/cloudwego/hertz/pkg/app/server"
 	"github.com/cloudwego/hertz/pkg/common/utils"
 	"github.com/cloudwego/kitex/client"
+	"github.com/cloudwego/kitex/client/genericclient"
 	"github.com/cloudwego/kitex/pkg/generic"
+
 	"github.com/kitex-contrib/registry-nacos/resolver"
 	handler "github.com/yiwen101/CardWizards/biz/handler"
-	"github.com/yiwen101/CardWizards/kitex_gen/arithmatic"
-	"github.com/yiwen101/CardWizards/kitex_gen/arithmatic/calculator"
 )
 
 // customizeRegister registers customize routers.
@@ -46,45 +48,92 @@ func customizedRegister(r *server.Hertz) {
 
 				// poc:
 				//client:
+				/*
 
-				client3, err := calculator.NewClient(
-					"arith",
-					client.WithHostPorts("0.0.0.0:8888"),
-					client.WithResolver(resolved),
-				)
-				if err != nil {
-					log.Fatal(err)
-				}
+					client3, err := calculator.NewClient(
+						"arith",
+						client.WithHostPorts("0.0.0.0:8888"),
+						client.WithResolver(resolved),
+					)
+					if err != nil {
+						log.Fatal(err)
+					}
 
-				// request
-				req3 := &arithmatic.Request{}
-				req3.FirstArguement = 1
-				req3.SecondArguement = 2
+					// request
+					req3 := &arithmatic.Request{}
+					req3.FirstArguement = 1
+					req3.SecondArguement = 2
 
-				// make call
-				//todo: how to make call based on the method name
+					// make call
+					//todo: how to make call based on the method name
 
-				resp3, err := client3.Add(context.Background(), req3)
-				if err != nil {
-					log.Fatal(err)
-				}
-				c.JSON(http.StatusOK, utils.H{
-					"message":         "not from generic client",
-					"firstArguement":  resp3.FirstArguement,
-					"secondArguement": resp3.SecondArguement,
-					"result":          resp3.Result_,
-				})
+					resp3, err := client3.Add(context.Background(), req3)
+					if err != nil {
+						log.Fatal(err)
+					}
+					c.JSON(http.StatusOK, utils.H{
+						"message":         "not from generic client",
+						"firstArguement":  resp3.FirstArguement,
+						"secondArguement": resp3.SecondArguement,
+						"result":          resp3.Result_,
+					})
+
+				*/
 
 				// generic: first, make sure idl fulfill the requirement
 				//read the idl file and generate the provider
-				p, err := generic.NewThriftFileProvider("../IDL/arithmatic.thrift")
-
+				p, err := generic.NewThriftFileProvider("IDL/arithmatic.thrift")
+				if err != nil {
+					log.Println("error in generic.NewThriftFileProvider")
+					panic(err)
+				}
 				//construct a generic httprequest with the provider
+				g, err := generic.HTTPThriftGeneric(p)
+				if err != nil {
+					log.Println("error in generic.HTTPThriftGeneric")
+					panic(err)
+				}
 				//make a generic client with the generic httprequest
+				cli, err := genericclient.NewClient(
+					"arith",
+					g, client.WithHostPorts("0.0.0.0:8889"),
+					client.WithResolver(resolved),
+				)
+
+				if err != nil {
+					log.Println("error in genericclient.NewClient")
+					panic(err)
+				}
 				// optional: 构建一个http request
+				//string(c.Request.URI().Path()) == /gateway/arith/add. get function lookup failed
+				httpReq, err := http.NewRequest(http.MethodGet, string(c.Request.URI().Path()), bytes.NewBuffer(c.Request.Body()))
+				log.Println("http request is: ", httpReq)
+				log.Println("http request body is: ", c.Request.Body())
+				log.Println("http request url is: ", c.Request.RequestURI())
+
+				if err != nil {
+					log.Println("error in constructing http request")
+					panic(err)
+				}
+
 				// 将http request转换成generic request
+				customReq, err := generic.FromHTTPRequest(httpReq)
+				if err != nil {
+					log.Println("error in converting http request to generic request")
+					panic(err)
+				}
+
 				// call
-				// 处理response
+				genericResponse, err := cli.GenericCall(ctx, "", customReq)
+				if err != nil {
+					log.Println("error in generic call")
+					panic(err)
+				}
+
+				resp := genericResponse.(*generic.HTTPResponse)
+				// return response
+				c.JSON(int(resp.StatusCode), resp.Body)
+
 			}
 
 			merchant_id := c.PostForm("merchant_id")

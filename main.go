@@ -7,6 +7,9 @@ import (
 )
 
 func main() {
+	// todo, set up logs and tracer?
+	// add two listeners and produce string information
+
 	h := server.Default(
 		server.WithHostPorts("127.0.0.1:8080"),
 	)
