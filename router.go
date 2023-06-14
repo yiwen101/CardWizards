@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	//"fmt"
 	"log"
 	"net/http"
 
@@ -19,9 +20,11 @@ import (
 
 // customizeRegister registers customize routers.
 func customizedRegister(r *server.Hertz) {
+	// todo: for other methods? post, head etcs
 	r.GET("/ping", handler.Ping)
 	r.GET("/gateway/:serviceName/*serviceRoute",
 		func(ctx context.Context, c *app.RequestContext) {
+			//Router:
 			serviceName := c.Param("serviceName")
 			// todo: if serviceName is not in the map, return a http response with error message
 			methodName := c.Param("serviceRoute")
@@ -31,23 +34,35 @@ func customizedRegister(r *server.Hertz) {
 
 			// if servicename = arith and method name = add, then call the kitex client
 			if serviceName == "arith" && methodName == "add" {
-				r, err := resolver.NewDefaultNacosResolver()
+				resolved, err := resolver.NewDefaultNacosResolver()
 				if err != nil {
 					panic(err)
 				}
 
+				// end of router
+
+				// Service: poc/make generic call;
+
+				// poc:
+				//client:
+
 				client3, err := calculator.NewClient(
 					"arith",
 					client.WithHostPorts("0.0.0.0:8888"),
-					client.WithResolver(r),
+					client.WithResolver(resolved),
 				)
 				if err != nil {
 					log.Fatal(err)
 				}
+
+				// request
 				req3 := &arithmatic.Request{}
-				// set the first arguement of req3 to 1, second arguement to 2
 				req3.FirstArguement = 1
 				req3.SecondArguement = 2
+
+				// make call
+				//todo: how to make call based on the method name
+
 				resp3, err := client3.Add(context.Background(), req3)
 				if err != nil {
 					log.Fatal(err)
@@ -57,12 +72,27 @@ func customizedRegister(r *server.Hertz) {
 					"secondArguement": resp3.SecondArguement,
 					"result":          resp3.Result_,
 				})
+
+				// generic: first, make sure idl fulfill the requirement
+				//read the idl file and generate the provider
+				//construct a generic httprequest with the provider
+				//make a generic client with the generic httprequest
+				// optional: 构建一个http request
+				// 将http request转换成generic request
+				// call
+				// 处理response
 			}
+
+			merchant_id := c.PostForm("merchant_id")
 
 			c.JSON(http.StatusOK, utils.H{
 				"serviceName": serviceName,
 				"methodName":  methodName,
+				"parameter":   merchant_id,
 			})
+
+			//c.String(consts.StatusOK, fmt.Sprintf("%v", c.Request.Body()))
+
 		})
 }
 
