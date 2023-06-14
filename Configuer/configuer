@@ -1,0 +1,9 @@
+package configuer
+
+import (
+	
+)
+
+func client.Option GetLoadBalanceOption(serviceName string) {
+	return client.WithLoadBalancer(loadbalance.NewWeightedRoundRobinBalancer()),
+}
