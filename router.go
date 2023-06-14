@@ -3,7 +3,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 
 	//"fmt"
@@ -13,167 +12,55 @@ import (
 	"github.com/cloudwego/hertz/pkg/app"
 	//"github.com/cloudwego/hertz/pkg/app/client/loadbalance"
 	"github.com/cloudwego/hertz/pkg/app/server"
-	"github.com/cloudwego/hertz/pkg/common/utils"
-	"github.com/cloudwego/kitex/client"
-	"github.com/cloudwego/kitex/client/genericclient"
 	"github.com/cloudwego/kitex/pkg/generic"
-	loadbalance "github.com/cloudwego/kitex/pkg/loadbalance"
 
-	"github.com/kitex-contrib/registry-nacos/resolver"
 	handler "github.com/yiwen101/CardWizards/biz/handler"
+	service "github.com/yiwen101/CardWizards/service"
 )
 
 // customizeRegister registers customize routers.
 func customizedRegister(r *server.Hertz) {
+	// todo: write documentation, differentiate build time and run time;
 	// todo: for other methods? post, head etcs
+	// question: how to check parameters are valid?
+	//question: how to check the service name and method name are valid?
 	r.GET("/ping", handler.Ping)
-	r.GET("/gateway/:serviceName/*serviceRoute",
-		func(ctx context.Context, c *app.RequestContext) {
-			//Router:
-			serviceName := c.Param("serviceName")
-			// todo: if serviceName is not in the map, return a http response with error message
-			methodName := c.Param("serviceRoute")
+	r.GET("/:serviceName/*serviceRoute", handlerFor(http.MethodGet))
+}
+
+func handlerFor(method string) func(ctx context.Context, c *app.RequestContext) {
+	return func(ctx context.Context, c *app.RequestContext) {
+
+		serviceName := c.Param("serviceName")
+		// toOptimise: if serviceName is not in the map, return a http response with error message
+		if !service.HasService(serviceName) {
+			c.JSON(http.StatusNotFound, "service not found")
+			return
+		} else {
+
 			//todo: if methodName is not in the map, return a http response with error message
-
-			//return a http resonse with serviceName and methodName as json field
-
-			// if servicename = arith and method name = add, then call the kitex client
-			if serviceName == "arith" && methodName == "add" {
-				resolved, err := resolver.NewDefaultNacosResolver()
-				if err != nil {
-					panic(err)
-				}
-
-				// end of router
-
-				// Service: poc/make generic call;
-
-				// poc:
-				//client:
-				/*
-
-					client3, err := calculator.NewClient(
-						"arith",
-						client.WithHostPorts("0.0.0.0:8888"),
-						client.WithResolver(resolved),
-					)
-					if err != nil {
-						log.Fatal(err)
-					}
-
-					// request
-					req3 := &arithmatic.Request{}
-					req3.FirstArguement = 1
-					req3.SecondArguement = 2
-
-					// make call
-					//todo: how to make call based on the method name
-
-					resp3, err := client3.Add(context.Background(), req3)
-					if err != nil {
-						log.Fatal(err)
-					}
-					c.JSON(http.StatusOK, utils.H{
-						"message":         "not from generic client",
-						"firstArguement":  resp3.FirstArguement,
-						"secondArguement": resp3.SecondArguement,
-						"result":          resp3.Result_,
-					})
-
-				*/
-
-				// generic: first, make sure idl fulfill the requirement
-				//read the idl file and generate the provider
-				p, err := generic.NewThriftFileProvider("IDL/arithmatic.thrift")
-				if err != nil {
-					log.Println("error in generic.NewThriftFileProvider")
-					panic(err)
-				}
-				//construct a generic httprequest with the provider
-				g, err := generic.HTTPThriftGeneric(p)
-				if err != nil {
-					log.Println("error in generic.HTTPThriftGeneric")
-					panic(err)
-				}
-				//make a generic client with the generic httprequest
-				// but before that, add a load balance solution
-				/*
-					lb := loadbalance.NewRoundRobin()
-
-					opt1 := loadbalance.Options{
-						RefreshInterval: 10 * time.Second,
-						ExpireInterval:  25 * time.Second,
-					} */
-
-				//lb := loadbalance.NewConsistBalancer()
-				//lb2 := loadbalance.NewWeightedRandomBalancer()
-				lb3 := loadbalance.NewWeightedRoundRobinBalancer()
-
-				cli, err := genericclient.NewClient(
-					"arith",
-					g,
-					client.WithHostPorts("0.0.0.0:8889"),
-					client.WithResolver(resolved),
-					client.WithLoadBalancer(lb3),
-				)
-
-				if err != nil {
-					log.Println("error in genericclient.NewClient")
-					panic(err)
-				}
-				// optional: 构建一个http request
-				//string(c.Request.URI().Path()) == /gateway/arith/add. get function lookup failed
-
-				s := "/arith/add" + c.URI().QueryArgs().String()
-				log.Println(s)
-				httpReq, err := http.NewRequest(http.MethodGet, "/arith/add?"+c.URI().QueryArgs().String(), bytes.NewBuffer(c.Request.Body()))
-				//log.Println("http request body is: ", c.Request.Body())
-				//log.Println("http request url is: ", c.Request.RequestURI())
-
-				if err != nil {
-					log.Println("error in constructing http request")
-					panic(err)
-				}
-
-				// 将http request转换成generic request
-				customReq, err := generic.FromHTTPRequest(httpReq)
-				if err != nil {
-					log.Println("error in converting http request to generic request")
-					panic(err)
-				}
-
-				// call
-				genericResponse, err := cli.GenericCall(ctx, "", customReq)
-				if err != nil {
-					log.Println("error in generic call")
-					panic(err)
-				}
-
-				resp := genericResponse.(*generic.HTTPResponse)
-				// return response
-				c.JSON(int(resp.StatusCode), resp.Body)
-
+			cli, err := service.GetClient(serviceName)
+			if err != nil {
+				log.Println("error in getting client")
+				panic(err)
 			}
 
-			merchant_id := c.PostForm("merchant_id")
+			// Todo: find a mean to bind and validate the parameters
+			//string(c.Request.URI().Path()) == /gateway/arith/add. get function lookup failed; +c.URI().QueryArgs().String()
+			log.Println("http request url is: " + c.Request.URI().String())
 
-			c.JSON(http.StatusOK, utils.H{
-				"serviceName":         serviceName,
-				"methodName":          methodName,
-				"parameter":           merchant_id,
-				"url.queryargs":       c.Request.URI().QueryArgs(),
-				"url.querystring":     c.Request.URI().QueryString(),
-				"url.path":            string(c.Request.URI().Path()),
-				"keys":                c.Keys,
-				"request":             c.Request,
-				"request.body":        c.Request.Body(),
-				"request.header":      c.Request.Header,
-				"reqqust.body string": string(c.Request.Body()),
-			})
+			// call
+			genericResponse, err := cli.GenericCall(ctx, "", service.BuildRequest(c, method))
+			if err != nil {
+				log.Println("error in generic call")
+				panic(err)
+			}
 
-			//c.String(consts.StatusOK, fmt.Sprintf("%v", c.Request.Body()))
-
-		})
+			resp := genericResponse.(*generic.HTTPResponse)
+			// return response
+			c.JSON(int(resp.StatusCode), resp.Body)
+		}
+	}
 }
 
 /*
