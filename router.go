@@ -86,9 +86,12 @@ func customizedRegister(r *server.Hertz) {
 			merchant_id := c.PostForm("merchant_id")
 
 			c.JSON(http.StatusOK, utils.H{
-				"serviceName": serviceName,
-				"methodName":  methodName,
-				"parameter":   merchant_id,
+				"serviceName":     serviceName,
+				"methodName":      methodName,
+				"parameter":       merchant_id,
+				"url.queryargs":   c.Request.URI().QueryArgs(),
+				"url.querystring": c.Request.URI().QueryString(),
+				"url.path":        string(c.Request.URI().Path()),
 			})
 
 			//c.String(consts.StatusOK, fmt.Sprintf("%v", c.Request.Body()))
