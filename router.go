@@ -106,10 +106,12 @@ func customizedRegister(r *server.Hertz) {
 				}
 				// optional: 构建一个http request
 				//string(c.Request.URI().Path()) == /gateway/arith/add. get function lookup failed
-				httpReq, err := http.NewRequest(http.MethodGet, "/arith/add", bytes.NewBuffer(c.Request.Body()))
-				log.Println("http request is: ", httpReq)
-				log.Println("http request body is: ", c.Request.Body())
-				log.Println("http request url is: ", c.Request.RequestURI())
+
+				s := "/arith/add" + c.URI().QueryArgs().String()
+				log.Println(s)
+				httpReq, err := http.NewRequest(http.MethodGet, "/arith/add?"+c.URI().QueryArgs().String(), bytes.NewBuffer(c.Request.Body()))
+				//log.Println("http request body is: ", c.Request.Body())
+				//log.Println("http request url is: ", c.Request.RequestURI())
 
 				if err != nil {
 					log.Println("error in constructing http request")
