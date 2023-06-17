@@ -16,7 +16,10 @@ import (
 
 	handler "github.com/yiwen101/CardWizards/biz/handler"
 	service "github.com/yiwen101/CardWizards/service"
+	temp "github.com/yiwen101/CardWizards/temp"
 )
+
+// todo: if error occur in the gateway, return error message properly
 
 // customizeRegister registers customize routers.
 func customizedRegister(r *server.Hertz) {
@@ -25,13 +28,44 @@ func customizedRegister(r *server.Hertz) {
 	// question: how to check parameters are valid?
 	//question: how to check the service name and method name are valid?
 	r.GET("/ping", handler.Ping)
-	r.GET("/:serviceName/*serviceRoute", handlerFor(http.MethodGet))
+
+	generateRouters()
+
+	for _, route := range routes {
+		switch route.httpMethod {
+		case http.MethodGet:
+			r.GET(route.route, route.handler)
+			continue
+		case http.MethodPost:
+			r.POST(route.route, route.handler)
+			continue
+		case http.MethodPut:
+			r.PUT(route.route, route.handler)
+			continue
+		case http.MethodDelete:
+			r.DELETE(route.route, route.handler)
+			continue
+		case http.MethodPatch:
+			r.PATCH(route.route, route.handler)
+			continue
+		case http.MethodHead:
+			r.HEAD(route.route, route.handler)
+			continue
+		case http.MethodOptions:
+			r.OPTIONS(route.route, route.handler)
+			continue
+		default:
+			log.Println(" unsupported http method, invalid route ")
+			continue
+		}
+	}
 }
 
-func handlerFor(method string) func(ctx context.Context, c *app.RequestContext) {
+func genericHandlerFor(method string) func(ctx context.Context, c *app.RequestContext) {
 	return func(ctx context.Context, c *app.RequestContext) {
 
 		serviceName := c.Param("serviceName")
+		methodName := c.Param("methodName")
 		// toOptimise: if serviceName is not in the map, return a http response with error message
 		if !service.HasService(serviceName) {
 			c.JSON(http.StatusNotFound, "service not found")
@@ -50,7 +84,7 @@ func handlerFor(method string) func(ctx context.Context, c *app.RequestContext) 
 			log.Println("http request url is: " + c.Request.URI().String())
 
 			// call
-			genericResponse, err := cli.GenericCall(ctx, "", service.BuildRequest(c, method))
+			genericResponse, err := cli.GenericCall(ctx, methodName, service.BuildRequest(c, method))
 			if err != nil {
 				log.Println("error in generic call")
 				panic(err)
@@ -63,7 +97,27 @@ func handlerFor(method string) func(ctx context.Context, c *app.RequestContext) 
 	}
 }
 
-/*
-func registerGateway(r *server.Hertz) {
-	group := r.Group("/APIgateway")
-} */
+type route struct {
+	httpMethod string
+	route      string
+	handler    func(ctx context.Context, c *app.RequestContext)
+}
+
+var routes []route
+
+func generateRouters() {
+	routes = []route{}
+	var genericRoute = route{
+		httpMethod: temp.RefaultHttpMethod,
+		route:      temp.RefaultRoute,
+		handler:    genericHandlerFor(http.MethodPost),
+	}
+	routes = append(routes, genericRoute)
+	// complex feature: use the annotation of the thrift file
+	// intermediate feature: give route at command line
+}
+
+func handlerFor() func(ctx context.Context, c *app.RequestContext) {
+	// todo
+	return func(ctx context.Context, c *app.RequestContext) {}
+}
