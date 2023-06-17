@@ -9,6 +9,7 @@ import (
 	"github.com/cloudwego/kitex/client"
 	"github.com/cloudwego/kitex/client/genericclient"
 	"github.com/cloudwego/kitex/pkg/generic"
+	"github.com/cloudwego/kitex/pkg/generic/descriptor"
 	"github.com/cloudwego/kitex/pkg/loadbalance"
 	"github.com/cloudwego/kitex/pkg/remote"
 	"github.com/kitex-contrib/registry-nacos/resolver"
@@ -35,6 +36,13 @@ func (d *descriptorKeeper) update() {
 		}
 		d.svcDsc.Store(svc)
 	}
+}
+func (d *descriptorKeeper) get() *descriptor.ServiceDescriptor {
+	svcDsc, ok := d.svcDsc.Load().(*descriptor.ServiceDescriptor)
+	if !ok {
+		hlog.Fatalf("invalid service descriptor")
+	}
+	return svcDsc
 }
 
 var container map[string]*descriptorKeeper

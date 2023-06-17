@@ -4,6 +4,8 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 
 	//"fmt"
 	"log"
@@ -121,3 +123,42 @@ func handlerFor() func(ctx context.Context, c *app.RequestContext) {
 	// todo
 	return func(ctx context.Context, c *app.RequestContext) {}
 }
+
+func IsJson(ctx context.Context, c *app.RequestContext) {
+	if string(c.ContentType()) != "application/json" {
+		c.SetStatusCode(http.StatusBadRequest)
+		c.String(http.StatusBadRequest, "Invalid Content-Type, expected application/json")
+		return
+	}
+}
+
+func validSerivceAndMethod(ctx context.Context, c *app.RequestContext) {
+	// todo
+}
+func validBody(ctx context.Context, c *app.RequestContext) {
+	body, err := c.Body()
+	if err != nil {
+		c.String(http.StatusInternalServerError, fmt.Sprintf("Internal Server Error in opening the json body, error message is: %s", err))
+		return
+	}
+
+	var j map[string]interface{}
+	err = json.Unmarshal(body, &j)
+	if err != nil {
+		c.String(http.StatusInternalServerError, fmt.Sprintf("Internal Server Error in unmarshalling the json body, error message is: %s", err))
+		return
+	}
+
+	//todo: check valid require with respect to the service, method
+}
+
+/*map[string]interface{}:
+//  4: optional map<i64, ReqItem> req_items (api.body='req_items')
+// need parse string into int64
+switch tt {
+case descriptor.STRUCT:
+	return descriptor.STRUCT, writeStruct, nil
+case descriptor.MAP:
+	return descriptor.MAP, writeStringMap, nil
+}
+*/
