@@ -12,36 +12,49 @@ import (
 	"github.com/yiwen101/CardWizards/validate"
 )
 
-func genericHandlerFor(method string) func(ctx context.Context, c *app.RequestContext) {
+func GenericHandlerFor(method string) func(ctx context.Context, c *app.RequestContext) {
 	return func(ctx context.Context, c *app.RequestContext) {
 		serviceName := c.Param("serviceName")
 		methodName := c.Param("methodName")
-
-		validator := validate.NewValidator()
-
-		err := validator.ValidateServiceMethodAndBody(ctx, c)
-
-		if err != nil {
-			return
-		}
-		cli, ok := temp.ServiceToClientMap[serviceName]
-		if !ok {
-			c.String(http.StatusInternalServerError, "Internal Server Error in getting the client")
-			return
-		}
 
 		req, err := buildRequest(c, method)
 		if err != nil {
 			c.String(http.StatusBadRequest, err.Error())
 		}
 
-		genericResponse, err := cli.GenericCall(ctx, methodName, req)
+		validator := validate.NewValidator()
+
+		serviceName, err = validator.ValidateRoute(serviceName, methodName, req)
 		if err != nil {
-			c.String(http.StatusInternalServerError, "Internal Server Error in making the call")
+			c.String(http.StatusBadRequest, err.Error())
 			return
 		}
 
-		resp := genericResponse.(*generic.HTTPResponse)
+		err = validator.ValidateBody(ctx, c)
+
+		if err != nil {
+			c.String(http.StatusBadRequest, err.Error())
+			return
+		}
+
+		cli, ok := temp.ServiceToClientMap[serviceName]
+		if !ok {
+			c.String(http.StatusInternalServerError, "Internal Server Error in getting the client: "+err.Error())
+			return
+		}
+
+		genericResponse, err := cli.GenericCall(ctx, methodName, req)
+		if err != nil {
+			c.String(http.StatusInternalServerError, "Internal Server Error in making the call: "+err.Error())
+			return
+		}
+
+		resp, ok := genericResponse.(*generic.HTTPResponse)
+		if !ok {
+			c.String(http.StatusInternalServerError, "Internal Server Error in converting the generic response: "+err.Error())
+			return
+		}
+
 		c.JSON(int(resp.StatusCode), resp.Body)
 	}
 }

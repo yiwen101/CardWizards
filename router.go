@@ -14,6 +14,7 @@ import (
 	"github.com/cloudwego/hertz/pkg/app/server"
 
 	handler "github.com/yiwen101/CardWizards/biz/handler"
+	service "github.com/yiwen101/CardWizards/service"
 	temp "github.com/yiwen101/CardWizards/temp"
 )
 
@@ -69,12 +70,19 @@ var routes []route
 
 func generateRoutes() {
 	routes = []route{}
-	var genericRoute = route{
-		httpMethod: temp.RefaultHttpMethod,
-		route:      temp.RefaultRoute,
-		handler:    genericHandlerFor(http.MethodPost),
+
+	methods := []string{http.MethodPost, http.MethodGet, http.MethodPut, http.MethodDelete, http.MethodPatch, http.MethodHead, http.MethodOptions}
+
+	for _, method := range methods {
+		handlerFunc := service.GenericHandlerFor(method)
+		route := route{
+			httpMethod: method,
+			route:      temp.RefaultRoute,
+			handler:    handlerFunc,
+		}
+		routes = append(routes, route)
 	}
-	routes = append(routes, genericRoute)
+
 	// complex feature: use the annotation of the thrift file
 	// intermediate feature: give route at command line
 }

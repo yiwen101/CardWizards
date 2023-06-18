@@ -1,12 +1,9 @@
 package temp
 
-import (
-	"net/http"
-)
+// assign variable "HttpMethods" to a slice of strings representing the http methods
 
 const (
 	RelativePathToIDL = "../IDL/"
-	RefaultHttpMethod = http.MethodPost
 	RefaultRoute      = "/:serviceName/:methodName/*furtherRoutes"
 )
 
