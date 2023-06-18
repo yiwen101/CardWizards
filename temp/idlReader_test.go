@@ -3,7 +3,6 @@ package temp
 import (
 	"testing"
 
-	"github.com/cloudwego/kitex/pkg/generic/descriptor"
 	"github.com/cloudwego/thriftgo/pkg/test"
 )
 
@@ -28,22 +27,19 @@ func TestBuildGenericClients(t *testing.T) {
 func TestGetDescriptorFromPath(t *testing.T) {
 	filename := "arithmatic.thrift"
 	includeDir := RelativePathToIDL
-	d, e := getDescriptorFromPath(filename, includeDir)
-	des := d.get()
-	fuc, e := des.LookupFunctionByMethod("Add")
-	if e != nil {
-		// means method not found
-	}
-	var ls map[int32]*descriptor.FieldDescriptor
-	ls = fuc.Request.Struct.FieldsByID
-	// find the number of keys for the map
-	if ls[2] != nil {
-		// invalid number of fields
-	}
-	req := ls[1]
-
-	println(req)
+	d, e := buildDescriptorKeeperFromPath(filename, includeDir)
 	test.Assert(t, e == nil)
+
+	des := d.get()
+	test.Assert(t, des != nil)
+
+	fuc, e := des.LookupFunctionByMethod("Add")
+	test.Assert(t, e == nil)
+	test.Assert(t, fuc != nil)
+
+	fuc, e = des.LookupFunctionByMethod("fake")
+	test.Assert(t, e != nil)
+	test.Assert(t, fuc == nil)
 }
 
 /* struct

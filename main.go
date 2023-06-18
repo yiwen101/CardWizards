@@ -6,9 +6,15 @@ import (
 	"github.com/cloudwego/hertz/pkg/app/server"
 )
 
+func gatewayload() {
+
+}
+
 func main() {
 	// todo, set up logs and tracer?
 	// add two listeners and produce string information
+
+	gatewayload()
 
 	h := server.Default(
 		server.WithHostPorts("127.0.0.1:8080"),

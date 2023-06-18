@@ -4,8 +4,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 
 	//"fmt"
 	"log"
@@ -31,7 +29,7 @@ func customizedRegister(r *server.Hertz) {
 	//question: how to check the service name and method name are valid?
 	r.GET("/ping", handler.Ping)
 
-	generateRouters()
+	generateRoutes()
 
 	for _, route := range routes {
 		switch route.httpMethod {
@@ -107,7 +105,7 @@ type route struct {
 
 var routes []route
 
-func generateRouters() {
+func generateRoutes() {
 	routes = []route{}
 	var genericRoute = route{
 		httpMethod: temp.RefaultHttpMethod,
@@ -122,34 +120,6 @@ func generateRouters() {
 func handlerFor() func(ctx context.Context, c *app.RequestContext) {
 	// todo
 	return func(ctx context.Context, c *app.RequestContext) {}
-}
-
-func IsJson(ctx context.Context, c *app.RequestContext) {
-	if string(c.ContentType()) != "application/json" {
-		c.SetStatusCode(http.StatusBadRequest)
-		c.String(http.StatusBadRequest, "Invalid Content-Type, expected application/json")
-		return
-	}
-}
-
-func validSerivceAndMethod(ctx context.Context, c *app.RequestContext) {
-	// todo
-}
-func validBody(ctx context.Context, c *app.RequestContext) {
-	body, err := c.Body()
-	if err != nil {
-		c.String(http.StatusInternalServerError, fmt.Sprintf("Internal Server Error in opening the json body, error message is: %s", err))
-		return
-	}
-
-	var j map[string]interface{}
-	err = json.Unmarshal(body, &j)
-	if err != nil {
-		c.String(http.StatusInternalServerError, fmt.Sprintf("Internal Server Error in unmarshalling the json body, error message is: %s", err))
-		return
-	}
-
-	//todo: check valid require with respect to the service, method
 }
 
 /*map[string]interface{}:
