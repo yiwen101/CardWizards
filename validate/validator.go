@@ -15,7 +15,7 @@ type Validator interface {
 
 type validatorImplement struct{}
 
-func newValidator() Validator {
+func NewValidator() Validator {
 	return &validatorImplement{}
 }
 

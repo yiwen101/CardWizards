@@ -16,7 +16,7 @@ struct Response {
 
 service Calculator {
     Response Add(1: Request request ) ( api.get = "/arith/add" )
-    Response Subtract(1: Request request)
-    Response Multiply(1: Request request)
+    Response Subtract(1: Request request) ( api.get = "/arith/subtract")
+    Response Multiply(1: Request request) ( api.head = "/arith/multiply")
     Response Divide(1: Request request)
 }

@@ -23,3 +23,24 @@ func TestDescriptorKeeper(t *testing.T) {
 	test.Assert(t, e != nil)
 	test.Assert(t, fuc == nil)
 }
+
+/*
+
+func experiment(t *testing.T) {
+	filename := "arithmatic.thrift"
+	includeDir := RelativePathToIDL
+	d, e := buildDescriptorKeeperFromPath(filename, includeDir)
+	test.Assert(t, e == nil)
+
+	des := d.get()
+	test.Assert(t, des != nil)
+	node := des.Router.
+}
+
+
+	/*
+Router
+tree
+GET prefix/ppath, function/Name
+
+*/

@@ -11,6 +11,7 @@ import (
 )
 
 func validateType(t *descriptor.TypeDescriptor, json interface{}) error {
+
 	switch t.Elem.Type.ToThriftTType().String() {
 	case "STRUCT":
 		json, ok := json.(map[string]interface{})
