@@ -12,7 +12,7 @@ import (
 	"github.com/kitex-contrib/registry-nacos/resolver"
 )
 
-var serviceToClientMap map[string]genericclient.Client
+var ServiceToClientMap map[string]genericclient.Client
 
 func buildGenericClientFromPath(fileName, includeDir string, opts ...client.Option) (genericclient.Client, error) {
 	//serviceToClientMap = make(map[string]genericclient.Client)
@@ -40,7 +40,7 @@ func buildGenericClientFromPath(fileName, includeDir string, opts ...client.Opti
 }
 
 func buildGenericClients() error {
-	serviceToClientMap = make(map[string]genericclient.Client)
+	ServiceToClientMap = make(map[string]genericclient.Client)
 
 	thiriftFiles, err := os.ReadDir(RelativePathToIDL)
 	if err != nil {
@@ -77,7 +77,7 @@ func buildGenericClients() error {
 			flag = true
 			hlog.Fatal("error in building generic client for service %s: %v", serviceName, err)
 		}
-		serviceToClientMap[serviceName] = client
+		ServiceToClientMap[serviceName] = client
 	}
 	if flag {
 		return fmt.Errorf("error in building generic clients")

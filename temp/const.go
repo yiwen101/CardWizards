@@ -9,3 +9,8 @@ const (
 	RefaultHttpMethod = http.MethodPost
 	RefaultRoute      = "/:serviceName/:methodName/*furtherRoutes"
 )
+
+func Load() {
+	buildDescriptorManager()
+	buildGenericClients()
+}

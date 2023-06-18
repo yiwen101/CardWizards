@@ -126,8 +126,12 @@ func validateBody(fuc *descriptor.FunctionDescriptor, json interface{}) error {
 	return validateType(params[1].Type, json)
 }
 
-func validSerivceAndMethod(serviceName, methodName string) error {
+func isGenericRoute(serviceName, methodName string) error {
 	return temp.DescsManager.ValidateServiceAndMethodName(serviceName, methodName)
+}
+
+func isAnnotatedRoute(req *descriptor.HTTPRequest) (string, error) {
+	return temp.DescsManager.ValidateServiceAndMethodNameWithAnnotedRoutes(req)
 }
 
 func treatJsonBody(ctx context.Context, c *app.RequestContext) (map[string]interface{}, error) {

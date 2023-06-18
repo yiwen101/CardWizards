@@ -11,14 +11,15 @@ import (
 )
 
 type descriptorKeeper struct {
-	svcDsc   atomic.Value
-	provider generic.DescriptorProvider
-	codec    remote.PayloadCodec
+	serviceName string
+	svcDsc      atomic.Value
+	provider    generic.DescriptorProvider
+	codec       remote.PayloadCodec
 }
 
-func newDescriptorKeeper(p generic.DescriptorProvider) (*descriptorKeeper, error) {
+func newDescriptorKeeper(p generic.DescriptorProvider, name string) (*descriptorKeeper, error) {
 	svc := <-p.Provide()
-	d := &descriptorKeeper{provider: p}
+	d := &descriptorKeeper{provider: p, serviceName: name}
 	d.svcDsc.Store(svc)
 	go d.update()
 	return d, nil
@@ -47,12 +48,23 @@ func (d *descriptorKeeper) validateMethodName(methodName string) error {
 	return nil
 }
 
+func (d *descriptorKeeper) matchedRouter(req *descriptor.HTTPRequest) bool {
+	router := d.get().Router
+	if router == nil {
+		return false
+	}
+	des, _ := router.Lookup(req)
+	return des != nil
+}
+
 func buildDescriptorKeeperFromPath(fileName, includeDir string) (*descriptorKeeper, error) {
+	serviceName := fileName[:len(fileName)-7]
+
 	p, err := generic.NewThriftFileProvider(fileName, includeDir)
 	if err != nil {
 		hlog.Fatalf("new thrift provider failed: %v", err)
 	}
-	descriptor, err := newDescriptorKeeper(p)
+	descriptor, err := newDescriptorKeeper(p, serviceName)
 	if err != nil {
 		hlog.Fatalf("new descriptor keeper failed: %v", err)
 	}

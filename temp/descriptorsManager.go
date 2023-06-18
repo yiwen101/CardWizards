@@ -11,6 +11,7 @@ import (
 var DescsManager DescriptorsManager
 
 type DescriptorsManager interface {
+	ValidateServiceAndMethodNameWithAnnotedRoutes(req *descriptor.HTTPRequest) (string, error)
 	ValidateServiceAndMethodName(serviceName, methodName string) error
 	GetFunctionDescriptor(serviceName, methodName string) (*descriptor.FunctionDescriptor, error)
 }
@@ -31,6 +32,16 @@ func (d *descriptorsManagerImpl) ValidateServiceAndMethodName(serviceName, metho
 	}
 	return manager.validateMethodName(methodName)
 }
+
+func (d *descriptorsManagerImpl) ValidateServiceAndMethodNameWithAnnotedRoutes(req *descriptor.HTTPRequest) (string, error) {
+	for serviceName, manager := range d.m {
+		if manager.matchedRouter(req) {
+			return serviceName, nil
+		}
+	}
+	return "", fmt.Errorf("service not found")
+}
+
 func (d *descriptorsManagerImpl) GetFunctionDescriptor(serviceName, methodName string) (*descriptor.FunctionDescriptor, error) {
 	manager, ok := d.m[serviceName]
 	if !ok {

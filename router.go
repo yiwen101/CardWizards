@@ -12,10 +12,8 @@ import (
 	"github.com/cloudwego/hertz/pkg/app"
 	//"github.com/cloudwego/hertz/pkg/app/client/loadbalance"
 	"github.com/cloudwego/hertz/pkg/app/server"
-	"github.com/cloudwego/kitex/pkg/generic"
 
 	handler "github.com/yiwen101/CardWizards/biz/handler"
-	service "github.com/yiwen101/CardWizards/service"
 	temp "github.com/yiwen101/CardWizards/temp"
 )
 
@@ -57,42 +55,6 @@ func customizedRegister(r *server.Hertz) {
 		default:
 			log.Println(" unsupported http method, invalid route ")
 			continue
-		}
-	}
-}
-
-func genericHandlerFor(method string) func(ctx context.Context, c *app.RequestContext) {
-	return func(ctx context.Context, c *app.RequestContext) {
-
-		serviceName := c.Param("serviceName")
-		methodName := c.Param("methodName")
-		// toOptimise: if serviceName is not in the map, return a http response with error message
-		if !service.HasService(serviceName) {
-			c.JSON(http.StatusNotFound, "service not found")
-			return
-		} else {
-
-			//todo: if methodName is not in the map, return a http response with error message
-			cli, err := service.GetClient(serviceName)
-			if err != nil {
-				log.Println("error in getting client")
-				panic(err)
-			}
-
-			// Todo: find a mean to bind and validate the parameters
-			//string(c.Request.URI().Path()) == /gateway/arith/add. get function lookup failed; +c.URI().QueryArgs().String()
-			log.Println("http request url is: " + c.Request.URI().String())
-
-			// call
-			genericResponse, err := cli.GenericCall(ctx, methodName, service.BuildRequest(c, method))
-			if err != nil {
-				log.Println("error in generic call")
-				panic(err)
-			}
-
-			resp := genericResponse.(*generic.HTTPResponse)
-			// return response
-			c.JSON(int(resp.StatusCode), resp.Body)
 		}
 	}
 }
