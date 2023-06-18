@@ -1,4 +1,4 @@
-package temp
+package client
 
 import (
 	"fmt"
@@ -10,6 +10,7 @@ import (
 	"github.com/cloudwego/kitex/pkg/generic"
 	"github.com/cloudwego/kitex/pkg/loadbalance"
 	"github.com/kitex-contrib/registry-nacos/resolver"
+	"github.com/yiwen101/CardWizards/common"
 )
 
 var ServiceToClientMap map[string]genericclient.Client
@@ -39,10 +40,10 @@ func buildGenericClientFromPath(fileName, includeDir string, opts ...client.Opti
 	return client, err
 }
 
-func buildGenericClients() error {
+func BuildGenericClients() error {
 	ServiceToClientMap = make(map[string]genericclient.Client)
 
-	thiriftFiles, err := os.ReadDir(RelativePathToIDL)
+	thiriftFiles, err := os.ReadDir(common.RelativePathToIDL)
 	if err != nil {
 		hlog.Fatal("failure reading thrrift files at IDL directory: %v", err)
 	}

@@ -1,4 +1,4 @@
-package temp
+package descriptor
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 )
 
 func TestDescriptorsManager(t *testing.T) {
-	error := buildDescriptorManager()
+	error := BuildDescriptorManager()
 	test.Assert(t, error == nil)
 	error = DescsManager.ValidateServiceAndMethodName("arithmatic", "Add")
 	test.Assert(t, error == nil)

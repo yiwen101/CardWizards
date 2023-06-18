@@ -8,8 +8,9 @@ import (
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/kitex/pkg/generic"
 	"github.com/cloudwego/kitex/pkg/generic/descriptor"
-	"github.com/yiwen101/CardWizards/temp"
-	"github.com/yiwen101/CardWizards/validate"
+	client "github.com/yiwen101/CardWizards/service/clients"
+	desc "github.com/yiwen101/CardWizards/service/descriptor"
+	"github.com/yiwen101/CardWizards/service/validate"
 )
 
 func GenericHandlerFor(method string) func(ctx context.Context, c *app.RequestContext) {
@@ -37,7 +38,7 @@ func GenericHandlerFor(method string) func(ctx context.Context, c *app.RequestCo
 			return
 		}
 
-		cli, ok := temp.ServiceToClientMap[serviceName]
+		cli, ok := client.ServiceToClientMap[serviceName]
 		if !ok {
 			c.String(http.StatusInternalServerError, "Internal Server Error in getting the client: "+err.Error())
 			return
@@ -71,4 +72,9 @@ func buildRequest(c *app.RequestContext, method string) (*descriptor.HTTPRequest
 		return nil, err
 	}
 	return customReq, nil
+}
+
+func Load() {
+	desc.BuildDescriptorManager()
+	client.BuildGenericClients()
 }

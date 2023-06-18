@@ -3,19 +3,13 @@
 package main
 
 import (
-	"context"
 
 	//"fmt"
-	"log"
-	"net/http"
 
-	"github.com/cloudwego/hertz/pkg/app"
 	//"github.com/cloudwego/hertz/pkg/app/client/loadbalance"
 	"github.com/cloudwego/hertz/pkg/app/server"
 
-	handler "github.com/yiwen101/CardWizards/biz/handler"
-	service "github.com/yiwen101/CardWizards/service"
-	temp "github.com/yiwen101/CardWizards/temp"
+	router "github.com/yiwen101/CardWizards/router"
 )
 
 // todo: if error occur in the gateway, return error message properly
@@ -26,79 +20,7 @@ func customizedRegister(r *server.Hertz) {
 	// todo: for other methods? post, head etcs
 	// question: how to check parameters are valid?
 	//question: how to check the service name and method name are valid?
-	r.GET("/ping", handler.Ping)
 
-	generateRoutes()
-
-	for _, route := range routes {
-		switch route.httpMethod {
-		case http.MethodGet:
-			r.GET(route.route, route.handler)
-			continue
-		case http.MethodPost:
-			r.POST(route.route, route.handler)
-			continue
-		case http.MethodPut:
-			r.PUT(route.route, route.handler)
-			continue
-		case http.MethodDelete:
-			r.DELETE(route.route, route.handler)
-			continue
-		case http.MethodPatch:
-			r.PATCH(route.route, route.handler)
-			continue
-		case http.MethodHead:
-			r.HEAD(route.route, route.handler)
-			continue
-		case http.MethodOptions:
-			r.OPTIONS(route.route, route.handler)
-			continue
-		default:
-			log.Println(" unsupported http method, invalid route ")
-			continue
-		}
-	}
+	rm := router.NewRouteManager()
+	rm.RegisterRoutes(r)
 }
-
-type route struct {
-	httpMethod string
-	route      string
-	handler    func(ctx context.Context, c *app.RequestContext)
-}
-
-var routes []route
-
-func generateRoutes() {
-	routes = []route{}
-
-	methods := []string{http.MethodPost, http.MethodGet, http.MethodPut, http.MethodDelete, http.MethodPatch, http.MethodHead, http.MethodOptions}
-
-	for _, method := range methods {
-		handlerFunc := service.GenericHandlerFor(method)
-		route := route{
-			httpMethod: method,
-			route:      temp.RefaultRoute,
-			handler:    handlerFunc,
-		}
-		routes = append(routes, route)
-	}
-
-	// complex feature: use the annotation of the thrift file
-	// intermediate feature: give route at command line
-}
-
-func handlerFor() func(ctx context.Context, c *app.RequestContext) {
-	// todo
-	return func(ctx context.Context, c *app.RequestContext) {}
-}
-
-/*map[string]interface{}:
-//  4: optional map<i64, ReqItem> req_items (api.body='req_items')
-// need parse string into int64
-switch tt {
-case descriptor.STRUCT:
-	return descriptor.STRUCT, writeStruct, nil
-case descriptor.MAP:
-	return descriptor.MAP, writeStringMap, nil
-}
-*/

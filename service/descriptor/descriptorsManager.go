@@ -1,4 +1,4 @@
-package temp
+package descriptor
 
 import (
 	"fmt"
@@ -6,6 +6,7 @@ import (
 
 	"github.com/cloudwego/hertz/pkg/common/hlog"
 	"github.com/cloudwego/kitex/pkg/generic/descriptor"
+	"github.com/yiwen101/CardWizards/common"
 )
 
 var DescsManager DescriptorsManager
@@ -49,9 +50,9 @@ func (d *descriptorsManagerImpl) GetFunctionDescriptor(serviceName, methodName s
 	}
 	return manager.get().LookupFunctionByMethod(methodName)
 }
-func buildDescriptorManager() error {
+func BuildDescriptorManager() error {
 	descManager := newDescriptorsManagerImpl()
-	thiriftFiles, err := os.ReadDir(RelativePathToIDL)
+	thiriftFiles, err := os.ReadDir(common.RelativePathToIDL)
 	if err != nil {
 		hlog.Fatal("failure reading thrrift files at IDL directory: %v", err)
 	}
@@ -84,3 +85,4 @@ func buildDescriptorManager() error {
 		return nil
 	}
 }
+
