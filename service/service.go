@@ -9,12 +9,12 @@ import (
 	"github.com/cloudwego/kitex/pkg/generic"
 	"github.com/cloudwego/kitex/pkg/generic/descriptor"
 	client "github.com/yiwen101/CardWizards/service/clients"
-	desc "github.com/yiwen101/CardWizards/service/descriptor"
 	"github.com/yiwen101/CardWizards/service/validate"
 )
 
 func GenericHandlerFor(method string) func(ctx context.Context, c *app.RequestContext) {
 	return func(ctx context.Context, c *app.RequestContext) {
+
 		serviceName := c.Param("serviceName")
 		methodName := c.Param("methodName")
 
@@ -72,9 +72,4 @@ func buildRequest(c *app.RequestContext, method string) (*descriptor.HTTPRequest
 		return nil, err
 	}
 	return customReq, nil
-}
-
-func Load() {
-	desc.BuildDescriptorManager()
-	client.BuildGenericClients()
 }

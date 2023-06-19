@@ -3,8 +3,10 @@ package common
 // assign variable "HttpMethods" to a slice of strings representing the http methods
 
 const (
-	RelativePathToIDL = "../../IDL/"
-	RefaultRoute      = "/:serviceName/:methodName/*furtherRoutes"
+	RelativePathToIDLFromTest = "../../IDL"
+	RelativePathToIDLFromRoot = "./IDL"
+
+	RefaultRoute = "/:serviceName/:methodName/*furtherRoutes"
 )
 
 /*

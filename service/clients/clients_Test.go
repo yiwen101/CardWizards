@@ -1,4 +1,4 @@
-package client
+package clients
 
 import (
 	"testing"
@@ -9,15 +9,13 @@ import (
 
 func TestBuildGenericClientFromPath(t *testing.T) {
 	filename := "arithmatic.thrift"
-	includeDir := common.RelativePathToIDL
+	includeDir := common.RelativePathToIDLFromTest
 	_, e := buildGenericClientFromPath(filename, includeDir)
 	test.Assert(t, e == nil)
 }
 
-// thrift package name = service name
-
 func TestBuildGenericClients(t *testing.T) {
-	err := BuildGenericClients()
+	err := BuildGenericClients(common.RelativePathToIDLFromTest)
 	test.Assert(t, err == nil)
 	g1 := ServiceToClientMap["arithmatic"]
 	test.Assert(t, g1 != nil)

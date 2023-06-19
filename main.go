@@ -4,13 +4,16 @@ package main
 
 import (
 	"github.com/cloudwego/hertz/pkg/app/server"
-	"github.com/yiwen101/CardWizards/service"
+	"github.com/yiwen101/CardWizards/common"
+	clients "github.com/yiwen101/CardWizards/service/clients"
+	"github.com/yiwen101/CardWizards/service/descriptor"
 )
 
 func main() {
 	// todo, set up logs and tracer?
 	// add two listeners and produce string information
-	service.Load()
+	clients.BuildGenericClients(common.RelativePathToIDLFromRoot)
+	descriptor.BuildDescriptorManager(common.RelativePathToIDLFromRoot)
 
 	h := server.Default(
 		server.WithHostPorts("127.0.0.1:8080"),

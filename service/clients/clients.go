@@ -1,4 +1,4 @@
-package client
+package clients
 
 import (
 	"fmt"
@@ -10,7 +10,6 @@ import (
 	"github.com/cloudwego/kitex/pkg/generic"
 	"github.com/cloudwego/kitex/pkg/loadbalance"
 	"github.com/kitex-contrib/registry-nacos/resolver"
-	"github.com/yiwen101/CardWizards/common"
 )
 
 var ServiceToClientMap map[string]genericclient.Client
@@ -40,10 +39,10 @@ func buildGenericClientFromPath(fileName, includeDir string, opts ...client.Opti
 	return client, err
 }
 
-func BuildGenericClients() error {
+func BuildGenericClients(relativePath string) error {
 	ServiceToClientMap = make(map[string]genericclient.Client)
 
-	thiriftFiles, err := os.ReadDir(common.RelativePathToIDL)
+	thiriftFiles, err := os.ReadDir(relativePath)
 	if err != nil {
 		hlog.Fatal("failure reading thrrift files at IDL directory: %v", err)
 	}
@@ -66,7 +65,7 @@ func BuildGenericClients() error {
 
 		client, err := buildGenericClientFromPath(
 			file.Name(),
-			"../IDL/",
+			relativePath,
 			client.WithResolver(nacosResolver),
 			client.WithLoadBalancer(loadbalance.NewWeightedRoundRobinBalancer()),
 		)
@@ -86,4 +85,5 @@ func BuildGenericClients() error {
 		hlog.Info("generic clients built successfully")
 		return nil
 	}
+
 }

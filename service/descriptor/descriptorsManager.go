@@ -2,11 +2,11 @@ package descriptor
 
 import (
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/cloudwego/hertz/pkg/common/hlog"
 	"github.com/cloudwego/kitex/pkg/generic/descriptor"
-	"github.com/yiwen101/CardWizards/common"
 )
 
 var DescsManager DescriptorsManager
@@ -50,15 +50,17 @@ func (d *descriptorsManagerImpl) GetFunctionDescriptor(serviceName, methodName s
 	}
 	return manager.get().LookupFunctionByMethod(methodName)
 }
-func BuildDescriptorManager() error {
+
+func BuildDescriptorManager(relativePath string) error {
 	descManager := newDescriptorsManagerImpl()
-	thiriftFiles, err := os.ReadDir(common.RelativePathToIDL)
+	thiriftFiles, err := os.ReadDir(relativePath)
 	if err != nil {
-		hlog.Fatal("failure reading thrrift files at IDL directory: %v", err)
+		hlog.Fatal("failure reading thrift files at IDL directory: %v", err)
 	}
 	flag := false
 
 	for _, file := range thiriftFiles {
+		log.Printf("file name: %s", file.Name())
 		if file.IsDir() {
 			hlog.Fatal("failure reading thrrift files at IDL directory as it contains directory")
 		}
@@ -67,7 +69,7 @@ func BuildDescriptorManager() error {
 			hlog.Fatal("failure reading thrrift files at IDL directory as it contains non-thrift file %s", file.Name())
 		}
 
-		d, err := buildDescriptorKeeperFromPath(file.Name(), "../IDL/")
+		d, err := buildDescriptorKeeperFromPath(file.Name(), relativePath)
 		if err != nil {
 			flag = true
 			hlog.Fatal("error in building descriptor for service %s: %v", file.Name(), err)
@@ -85,4 +87,5 @@ func BuildDescriptorManager() error {
 		return nil
 	}
 }
+
 

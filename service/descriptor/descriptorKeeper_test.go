@@ -9,7 +9,7 @@ import (
 
 func TestDescriptorKeeper(t *testing.T) {
 	filename := "http.thrift"
-	includeDir := common.RelativePathToIDL
+	includeDir := common.RelativePathToIDLFromTest
 	d, err := buildDescriptorKeeperFromPath(filename, includeDir)
 	test.Assert(t, err == nil)
 
