@@ -3,6 +3,8 @@ package service
 import (
 	"bytes"
 	"context"
+	"encoding/json"
+	"log"
 	"net/http"
 
 	"github.com/cloudwego/hertz/pkg/app"
@@ -44,21 +46,35 @@ func GenericHandlerFor(method string) func(ctx context.Context, c *app.RequestCo
 			return
 		}
 
-		genericResponse, err := cli.GenericCall(ctx, methodName, req)
+		jsonbytes, err := c.Body()
+		// should not happen, otherwise indicate that there is problem with my validator
+		if err != nil {
+			c.String(http.StatusInternalServerError, "Internal Server Error in marshalling the json body: "+err.Error())
+			return
+		}
+		var jsonString string
+		json.Unmarshal(jsonbytes, &jsonString)
+
+		c.String(http.StatusOK, jsonString)
+
+		genericResponse, err := cli.GenericCall(ctx, methodName, jsonString)
 		if err != nil {
 			c.String(http.StatusInternalServerError, "Internal Server Error in making the call: "+err.Error())
 			return
 		}
 
-		resp, ok := genericResponse.(*generic.HTTPResponse)
+		log.Println(genericResponse)
+		resp, ok := genericResponse.(string)
 		if !ok {
 			c.String(http.StatusInternalServerError, "Internal Server Error in converting the generic response: "+err.Error())
 			return
 		}
 
-		c.JSON(int(resp.StatusCode), resp.Body)
+		c.String(200, resp)
 	}
 }
+
+// is directly useful for httpGenericcall, but not for jsonGeneric call; nevertheless, is still needed for my validator to function
 
 func buildRequest(c *app.RequestContext, method string) (*descriptor.HTTPRequest, error) {
 	httpReq, err := http.NewRequest(method, c.Request.URI().String(), bytes.NewBuffer(c.Request.Body()))

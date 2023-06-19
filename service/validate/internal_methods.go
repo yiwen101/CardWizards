@@ -143,10 +143,10 @@ func treatJsonBody(ctx context.Context, c *app.RequestContext) (map[string]inter
 		} */
 
 	b, _ := c.Body()
-	log.Println(b)
+	//log.Println(b)
 	//body2 := c.Request.BodyBytes()
 
-	log.Println("gateway here")
+	//log.Println("gateway here")
 	/*
 		log.Println("c.Body() is:")
 		log.Println(b)
