@@ -8,8 +8,9 @@ import (
 )
 
 func TestValidator(t *testing.T) {
-
+	descriptor.BuildDescriptorManager("../../IDL")
 	dm, err := descriptor.GetDescriptorManager()
+	test.Assert(t, err == nil)
 	arithAddDescriptor, err := dm.GetFunctionDescriptor("arithmatic", "Add")
 	test.Assert(t, err == nil)
 

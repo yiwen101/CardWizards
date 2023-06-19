@@ -11,7 +11,7 @@ import (
 )
 
 func validateType(t *descriptor.TypeDescriptor, json interface{}, fieldName string) error {
-	// debug log: it seems that all number encoded in json format are float64
+	//  it seems that all number encoded in json format are float64
 
 	switch t.Type.ToThriftTType().String() {
 	case "STRUCT":
@@ -98,7 +98,6 @@ func validateType(t *descriptor.TypeDescriptor, json interface{}, fieldName stri
 }
 
 func validateName(p *descriptor.FieldDescriptor, json map[string]interface{}) error {
-
 	if p.Optional || p.DefaultValue != nil {
 		return nil
 	}
@@ -128,36 +127,7 @@ func validateBody(fuc *descriptor.FunctionDescriptor, json map[string]interface{
 }
 
 func treatJsonBody(ctx context.Context, c *app.RequestContext) (map[string]interface{}, error) {
-	/*
-		if string(c.ContentType()) != "application/json" {
-			return nil, fmt.Errorf("Invalid Content-Type, expected application/json")
-		} */
-
 	b, _ := c.Body()
-	//log.Println(b)
-	//body2 := c.Request.BodyBytes()
-
-	//log.Println("gateway here")
-	/*
-		log.Println("c.Body() is:")
-		log.Println(b)
-		log.Println("c.ContentType is:")
-		log.Println(c.ContentType())
-		log.Println("c.Request.BodyBytes() is:")
-		log.Println(body2)
-		log.Println("c.Params")
-		log.Println(c.Params)
-		//log.Println("c.Request")
-		//log.Println(c.Request)
-		log.Println("c.Request.Body")
-		log.Println(c.Request.Body())
-		log.Println("string(c.Request.Body)")
-		log.Println(string(c.Request.Body()))
-		log.Println("c.Params")
-		log.Println(c.Params)
-		log.Printf("c.Keys")
-		log.Println(c.Keys)
-	*/
 	var j map[string]interface{}
 
 	err := json.Unmarshal(b, &j)

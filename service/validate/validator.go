@@ -26,6 +26,10 @@ func (v *validatorImplement) ValidateBody(ctx context.Context, c *app.RequestCon
 	}
 
 	dm, err := desc.GetDescriptorManager()
+	if err != nil {
+		return err
+	}
+
 	serviceName, methodName := c.Param("serviceName"), c.Param("methodName")
 	desc, err := dm.GetFunctionDescriptor(serviceName, methodName)
 	if err != nil {

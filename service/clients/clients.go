@@ -49,11 +49,6 @@ func BuildGenericClients(relativePath string) error {
 		hlog.Fatal("failure reading thrrift files at IDL directory: %v", err)
 	}
 
-	nacosResolver, err := resolver.NewDefaultNacosResolver()
-	if err != nil {
-		hlog.Fatalf("err in building nacos resolver, please check your nacos server is on:%v", err)
-	}
-
 	flag := false
 
 	for _, file := range thiriftFiles {
@@ -65,15 +60,15 @@ func BuildGenericClients(relativePath string) error {
 			hlog.Fatal("failure reading thrrift files at IDL directory as it contains non-thrift file %s", file.Name())
 		}
 
+		// Get service name by deleting ".thrift" from the end of the file name
+		serviceName := file.Name()[:len(file.Name())-7]
+
 		client, err := buildGenericClientFromPath(
 			file.Name(),
 			relativePath,
-			client.WithResolver(nacosResolver),
-			client.WithLoadBalancer(loadbalance.NewWeightedRoundRobinBalancer()),
+			getServiceRegistryOption(serviceName),
+			getServiceLoadBalancerOption(serviceName),
 		)
-
-		// Get service name by deleting ".thrift" from the end of the file name
-		serviceName := file.Name()[:len(file.Name())-7]
 
 		if err != nil {
 			flag = true
@@ -87,5 +82,18 @@ func BuildGenericClients(relativePath string) error {
 		hlog.Info("generic clients built successfully")
 		return nil
 	}
+}
 
+func getServiceRegistryOption(serviceName string) client.Option {
+	nacosResolver, err := resolver.NewDefaultNacosResolver()
+	if err != nil {
+		hlog.Fatalf("err in building nacos resolver, please check your nacos server is on:%v", err)
+	}
+
+	return client.WithResolver(nacosResolver)
+}
+
+func getServiceLoadBalancerOption(serviceName string) client.Option {
+	// todo: enable optioning
+	return client.WithLoadBalancer(loadbalance.NewWeightedRoundRobinBalancer())
 }
