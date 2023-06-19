@@ -8,8 +8,8 @@ import (
 	"github.com/cloudwego/kitex/pkg/rpcinfo"
 	"github.com/cloudwego/kitex/server"
 	"github.com/kitex-contrib/registry-nacos/registry"
-	arithmatic "github.com/yiwen101/CardWizards/kitex_gen/arithmatic"
-	calculator "github.com/yiwen101/CardWizards/kitex_gen/arithmatic/calculator"
+	arithmatic "github.com/yiwen101/CardWizards/TestRPC/kitex_gen/arithmatic"
+	calculator "github.com/yiwen101/CardWizards/TestRPC/kitex_gen/arithmatic/arithmatic"
 )
 
 // CalculatorImpl implements the last service interface defined in the IDL.
@@ -39,6 +39,11 @@ func (s *CalculatorImpl) Divide(ctx context.Context, request *arithmatic.Request
 	return &arithmatic.Response{FirstArguement: request.FirstArguement, SecondArguement: request.SecondArguement, Result_: request.FirstArguement / request.SecondArguement}, nil
 }
 
+func (s *CalculatorImpl) TestValidator(ctx context.Context, request *arithmatic.TestValidator) (resp *arithmatic.Response, err error) {
+	// TODO: Your code here...
+	return &arithmatic.Response{FirstArguement: 17, SecondArguement: 17, Result_: 17}, nil
+}
+
 func main() {
 
 	r, err := registry.NewDefaultNacosRegistry()
@@ -48,7 +53,7 @@ func main() {
 
 	svr := calculator.NewServer(
 		new(CalculatorImpl),
-		server.WithServerBasicInfo(&rpcinfo.EndpointBasicInfo{ServiceName: "arith"}),
+		server.WithServerBasicInfo(&rpcinfo.EndpointBasicInfo{ServiceName: "arithmatic"}),
 		server.WithRegistry(r),
 	)
 

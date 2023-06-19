@@ -4,24 +4,36 @@ import (
 	"context"
 	"log"
 
-	"github.com/cloudwego/kitex/client"
-	"github.com/kitex-contrib/registry-nacos/resolver"
-	"github.com/yiwen101/CardWizards/kitex_gen/arithmatic"
-	"github.com/yiwen101/CardWizards/kitex_gen/arithmatic/calculator"
+	arithmatic "github.com/yiwen101/CardWizards/TestRPC/kitex_gen/arithmatic"
+	calculator "github.com/yiwen101/CardWizards/TestRPC/kitex_gen/arithmatic/arithmatic"
 )
 
 func main() {
+	/*
+		client, err := userservice.NewClient("demonuser", client.WithHostPorts("0.0.0.0:8888"))
+		if err != nil {
+			log.Fatal(err)
+		}
+		req := &demouser.CreateUserRequest{}
+		resp, err := client.CreateUser(context.Background(), req)
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Println(resp)
 
-	r, err := resolver.NewDefaultNacosResolver()
-	if err != nil {
-		panic(err)
-	}
+		client2, err := noteservice.NewClient("demonote")
+		if err != nil {
+			log.Fatal(err)
+		}
+		req2 := &demonote.CreateNoteRequest{}
+		resp2, err := client2.CreateNote(context.Background(), req2)
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Println(resp2)
+	*/
 
-	client3, err := calculator.NewClient(
-		"arith",
-		client.WithHostPorts("0.0.0.0:8888"),
-		client.WithResolver(r),
-	)
+	client3, err := calculator.NewClient("arithmatic")
 	if err != nil {
 		log.Fatal(err)
 	}

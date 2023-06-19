@@ -10,9 +10,10 @@ import (
 )
 
 type Request struct {
-	FirstArguement  int64   `thrift:"firstArguement,1" frugal:"1,default,i64" json:"firstArguement"`
-	SecondArguement int64   `thrift:"SecondArguement,2" frugal:"2,default,i64" json:"SecondArguement"`
-	Message         *string `thrift:"message,3,optional" frugal:"3,optional,string" json:"message,omitempty"`
+	FirstArguement  int64             `thrift:"firstArguement,1" frugal:"1,default,i64" json:"firstArguement"`
+	SecondArguement int64             `thrift:"secondArguement,2" frugal:"2,default,i64" json:"secondArguement"`
+	Message         *string           `thrift:"message,3,optional" frugal:"3,optional,string" json:"message,omitempty"`
+	Extra           map[string]string `thrift:"extra,4,optional" frugal:"4,optional,map<string:string>" json:"extra,omitempty"`
 }
 
 func NewRequest() *Request {
@@ -39,6 +40,15 @@ func (p *Request) GetMessage() (v string) {
 	}
 	return *p.Message
 }
+
+var Request_Extra_DEFAULT map[string]string
+
+func (p *Request) GetExtra() (v map[string]string) {
+	if !p.IsSetExtra() {
+		return Request_Extra_DEFAULT
+	}
+	return p.Extra
+}
 func (p *Request) SetFirstArguement(val int64) {
 	p.FirstArguement = val
 }
@@ -48,15 +58,23 @@ func (p *Request) SetSecondArguement(val int64) {
 func (p *Request) SetMessage(val *string) {
 	p.Message = val
 }
+func (p *Request) SetExtra(val map[string]string) {
+	p.Extra = val
+}
 
 var fieldIDToName_Request = map[int16]string{
 	1: "firstArguement",
-	2: "SecondArguement",
+	2: "secondArguement",
 	3: "message",
+	4: "extra",
 }
 
 func (p *Request) IsSetMessage() bool {
 	return p.Message != nil
+}
+
+func (p *Request) IsSetExtra() bool {
+	return p.Extra != nil
 }
 
 func (p *Request) Read(iprot thrift.TProtocol) (err error) {
@@ -101,6 +119,16 @@ func (p *Request) Read(iprot thrift.TProtocol) (err error) {
 		case 3:
 			if fieldTypeId == thrift.STRING {
 				if err = p.ReadField3(iprot); err != nil {
+					goto ReadFieldError
+				}
+			} else {
+				if err = iprot.Skip(fieldTypeId); err != nil {
+					goto SkipFieldError
+				}
+			}
+		case 4:
+			if fieldTypeId == thrift.MAP {
+				if err = p.ReadField4(iprot); err != nil {
 					goto ReadFieldError
 				}
 			} else {
@@ -165,6 +193,35 @@ func (p *Request) ReadField3(iprot thrift.TProtocol) error {
 	return nil
 }
 
+func (p *Request) ReadField4(iprot thrift.TProtocol) error {
+	_, _, size, err := iprot.ReadMapBegin()
+	if err != nil {
+		return err
+	}
+	p.Extra = make(map[string]string, size)
+	for i := 0; i < size; i++ {
+		var _key string
+		if v, err := iprot.ReadString(); err != nil {
+			return err
+		} else {
+			_key = v
+		}
+
+		var _val string
+		if v, err := iprot.ReadString(); err != nil {
+			return err
+		} else {
+			_val = v
+		}
+
+		p.Extra[_key] = _val
+	}
+	if err := iprot.ReadMapEnd(); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (p *Request) Write(oprot thrift.TProtocol) (err error) {
 	var fieldId int16
 	if err = oprot.WriteStructBegin("Request"); err != nil {
@@ -181,6 +238,10 @@ func (p *Request) Write(oprot thrift.TProtocol) (err error) {
 		}
 		if err = p.writeField3(oprot); err != nil {
 			fieldId = 3
+			goto WriteFieldError
+		}
+		if err = p.writeField4(oprot); err != nil {
+			fieldId = 4
 			goto WriteFieldError
 		}
 
@@ -220,7 +281,7 @@ WriteFieldEndError:
 }
 
 func (p *Request) writeField2(oprot thrift.TProtocol) (err error) {
-	if err = oprot.WriteFieldBegin("SecondArguement", thrift.I64, 2); err != nil {
+	if err = oprot.WriteFieldBegin("secondArguement", thrift.I64, 2); err != nil {
 		goto WriteFieldBeginError
 	}
 	if err := oprot.WriteI64(p.SecondArguement); err != nil {
@@ -255,6 +316,38 @@ WriteFieldEndError:
 	return thrift.PrependError(fmt.Sprintf("%T write field 3 end error: ", p), err)
 }
 
+func (p *Request) writeField4(oprot thrift.TProtocol) (err error) {
+	if p.IsSetExtra() {
+		if err = oprot.WriteFieldBegin("extra", thrift.MAP, 4); err != nil {
+			goto WriteFieldBeginError
+		}
+		if err := oprot.WriteMapBegin(thrift.STRING, thrift.STRING, len(p.Extra)); err != nil {
+			return err
+		}
+		for k, v := range p.Extra {
+
+			if err := oprot.WriteString(k); err != nil {
+				return err
+			}
+
+			if err := oprot.WriteString(v); err != nil {
+				return err
+			}
+		}
+		if err := oprot.WriteMapEnd(); err != nil {
+			return err
+		}
+		if err = oprot.WriteFieldEnd(); err != nil {
+			goto WriteFieldEndError
+		}
+	}
+	return nil
+WriteFieldBeginError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 4 begin error: ", p), err)
+WriteFieldEndError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 4 end error: ", p), err)
+}
+
 func (p *Request) String() string {
 	if p == nil {
 		return "<nil>"
@@ -275,6 +368,9 @@ func (p *Request) DeepEqual(ano *Request) bool {
 		return false
 	}
 	if !p.Field3DeepEqual(ano.Message) {
+		return false
+	}
+	if !p.Field4DeepEqual(ano.Extra) {
 		return false
 	}
 	return true
@@ -303,6 +399,19 @@ func (p *Request) Field3DeepEqual(src *string) bool {
 	}
 	if strings.Compare(*p.Message, *src) != 0 {
 		return false
+	}
+	return true
+}
+func (p *Request) Field4DeepEqual(src map[string]string) bool {
+
+	if len(p.Extra) != len(src) {
+		return false
+	}
+	for k, v := range p.Extra {
+		_src := src[k]
+		if strings.Compare(v, _src) != 0 {
+			return false
+		}
 	}
 	return true
 }
@@ -664,7 +773,277 @@ func (p *Response) Field4DeepEqual(src int64) bool {
 	return true
 }
 
-type Calculator interface {
+type TestValidator struct {
+	Recur *Request          `thrift:"recur,1" frugal:"1,default,Request" json:"recur"`
+	Extra map[string]string `thrift:"extra,2" frugal:"2,default,map<string:string>" json:"extra"`
+}
+
+func NewTestValidator() *TestValidator {
+	return &TestValidator{}
+}
+
+func (p *TestValidator) InitDefault() {
+	*p = TestValidator{}
+}
+
+var TestValidator_Recur_DEFAULT *Request
+
+func (p *TestValidator) GetRecur() (v *Request) {
+	if !p.IsSetRecur() {
+		return TestValidator_Recur_DEFAULT
+	}
+	return p.Recur
+}
+
+func (p *TestValidator) GetExtra() (v map[string]string) {
+	return p.Extra
+}
+func (p *TestValidator) SetRecur(val *Request) {
+	p.Recur = val
+}
+func (p *TestValidator) SetExtra(val map[string]string) {
+	p.Extra = val
+}
+
+var fieldIDToName_TestValidator = map[int16]string{
+	1: "recur",
+	2: "extra",
+}
+
+func (p *TestValidator) IsSetRecur() bool {
+	return p.Recur != nil
+}
+
+func (p *TestValidator) Read(iprot thrift.TProtocol) (err error) {
+
+	var fieldTypeId thrift.TType
+	var fieldId int16
+
+	if _, err = iprot.ReadStructBegin(); err != nil {
+		goto ReadStructBeginError
+	}
+
+	for {
+		_, fieldTypeId, fieldId, err = iprot.ReadFieldBegin()
+		if err != nil {
+			goto ReadFieldBeginError
+		}
+		if fieldTypeId == thrift.STOP {
+			break
+		}
+
+		switch fieldId {
+		case 1:
+			if fieldTypeId == thrift.STRUCT {
+				if err = p.ReadField1(iprot); err != nil {
+					goto ReadFieldError
+				}
+			} else {
+				if err = iprot.Skip(fieldTypeId); err != nil {
+					goto SkipFieldError
+				}
+			}
+		case 2:
+			if fieldTypeId == thrift.MAP {
+				if err = p.ReadField2(iprot); err != nil {
+					goto ReadFieldError
+				}
+			} else {
+				if err = iprot.Skip(fieldTypeId); err != nil {
+					goto SkipFieldError
+				}
+			}
+		default:
+			if err = iprot.Skip(fieldTypeId); err != nil {
+				goto SkipFieldError
+			}
+		}
+
+		if err = iprot.ReadFieldEnd(); err != nil {
+			goto ReadFieldEndError
+		}
+	}
+	if err = iprot.ReadStructEnd(); err != nil {
+		goto ReadStructEndError
+	}
+
+	return nil
+ReadStructBeginError:
+	return thrift.PrependError(fmt.Sprintf("%T read struct begin error: ", p), err)
+ReadFieldBeginError:
+	return thrift.PrependError(fmt.Sprintf("%T read field %d begin error: ", p, fieldId), err)
+ReadFieldError:
+	return thrift.PrependError(fmt.Sprintf("%T read field %d '%s' error: ", p, fieldId, fieldIDToName_TestValidator[fieldId]), err)
+SkipFieldError:
+	return thrift.PrependError(fmt.Sprintf("%T field %d skip type %d error: ", p, fieldId, fieldTypeId), err)
+
+ReadFieldEndError:
+	return thrift.PrependError(fmt.Sprintf("%T read field end error", p), err)
+ReadStructEndError:
+	return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
+}
+
+func (p *TestValidator) ReadField1(iprot thrift.TProtocol) error {
+	p.Recur = NewRequest()
+	if err := p.Recur.Read(iprot); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (p *TestValidator) ReadField2(iprot thrift.TProtocol) error {
+	_, _, size, err := iprot.ReadMapBegin()
+	if err != nil {
+		return err
+	}
+	p.Extra = make(map[string]string, size)
+	for i := 0; i < size; i++ {
+		var _key string
+		if v, err := iprot.ReadString(); err != nil {
+			return err
+		} else {
+			_key = v
+		}
+
+		var _val string
+		if v, err := iprot.ReadString(); err != nil {
+			return err
+		} else {
+			_val = v
+		}
+
+		p.Extra[_key] = _val
+	}
+	if err := iprot.ReadMapEnd(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (p *TestValidator) Write(oprot thrift.TProtocol) (err error) {
+	var fieldId int16
+	if err = oprot.WriteStructBegin("testValidator"); err != nil {
+		goto WriteStructBeginError
+	}
+	if p != nil {
+		if err = p.writeField1(oprot); err != nil {
+			fieldId = 1
+			goto WriteFieldError
+		}
+		if err = p.writeField2(oprot); err != nil {
+			fieldId = 2
+			goto WriteFieldError
+		}
+
+	}
+	if err = oprot.WriteFieldStop(); err != nil {
+		goto WriteFieldStopError
+	}
+	if err = oprot.WriteStructEnd(); err != nil {
+		goto WriteStructEndError
+	}
+	return nil
+WriteStructBeginError:
+	return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err)
+WriteFieldError:
+	return thrift.PrependError(fmt.Sprintf("%T write field %d error: ", p, fieldId), err)
+WriteFieldStopError:
+	return thrift.PrependError(fmt.Sprintf("%T write field stop error: ", p), err)
+WriteStructEndError:
+	return thrift.PrependError(fmt.Sprintf("%T write struct end error: ", p), err)
+}
+
+func (p *TestValidator) writeField1(oprot thrift.TProtocol) (err error) {
+	if err = oprot.WriteFieldBegin("recur", thrift.STRUCT, 1); err != nil {
+		goto WriteFieldBeginError
+	}
+	if err := p.Recur.Write(oprot); err != nil {
+		return err
+	}
+	if err = oprot.WriteFieldEnd(); err != nil {
+		goto WriteFieldEndError
+	}
+	return nil
+WriteFieldBeginError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 1 begin error: ", p), err)
+WriteFieldEndError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 1 end error: ", p), err)
+}
+
+func (p *TestValidator) writeField2(oprot thrift.TProtocol) (err error) {
+	if err = oprot.WriteFieldBegin("extra", thrift.MAP, 2); err != nil {
+		goto WriteFieldBeginError
+	}
+	if err := oprot.WriteMapBegin(thrift.STRING, thrift.STRING, len(p.Extra)); err != nil {
+		return err
+	}
+	for k, v := range p.Extra {
+
+		if err := oprot.WriteString(k); err != nil {
+			return err
+		}
+
+		if err := oprot.WriteString(v); err != nil {
+			return err
+		}
+	}
+	if err := oprot.WriteMapEnd(); err != nil {
+		return err
+	}
+	if err = oprot.WriteFieldEnd(); err != nil {
+		goto WriteFieldEndError
+	}
+	return nil
+WriteFieldBeginError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 2 begin error: ", p), err)
+WriteFieldEndError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 2 end error: ", p), err)
+}
+
+func (p *TestValidator) String() string {
+	if p == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("TestValidator(%+v)", *p)
+}
+
+func (p *TestValidator) DeepEqual(ano *TestValidator) bool {
+	if p == ano {
+		return true
+	} else if p == nil || ano == nil {
+		return false
+	}
+	if !p.Field1DeepEqual(ano.Recur) {
+		return false
+	}
+	if !p.Field2DeepEqual(ano.Extra) {
+		return false
+	}
+	return true
+}
+
+func (p *TestValidator) Field1DeepEqual(src *Request) bool {
+
+	if !p.Recur.DeepEqual(src) {
+		return false
+	}
+	return true
+}
+func (p *TestValidator) Field2DeepEqual(src map[string]string) bool {
+
+	if len(p.Extra) != len(src) {
+		return false
+	}
+	for k, v := range p.Extra {
+		_src := src[k]
+		if strings.Compare(v, _src) != 0 {
+			return false
+		}
+	}
+	return true
+}
+
+type Arithmatic interface {
 	Add(ctx context.Context, request *Request) (r *Response, err error)
 
 	Subtract(ctx context.Context, request *Request) (r *Response, err error)
@@ -672,98 +1051,110 @@ type Calculator interface {
 	Multiply(ctx context.Context, request *Request) (r *Response, err error)
 
 	Divide(ctx context.Context, request *Request) (r *Response, err error)
+
+	TestValidator(ctx context.Context, request *TestValidator) (r *Response, err error)
 }
 
-type CalculatorClient struct {
+type ArithmaticClient struct {
 	c thrift.TClient
 }
 
-func NewCalculatorClientFactory(t thrift.TTransport, f thrift.TProtocolFactory) *CalculatorClient {
-	return &CalculatorClient{
+func NewArithmaticClientFactory(t thrift.TTransport, f thrift.TProtocolFactory) *ArithmaticClient {
+	return &ArithmaticClient{
 		c: thrift.NewTStandardClient(f.GetProtocol(t), f.GetProtocol(t)),
 	}
 }
 
-func NewCalculatorClientProtocol(t thrift.TTransport, iprot thrift.TProtocol, oprot thrift.TProtocol) *CalculatorClient {
-	return &CalculatorClient{
+func NewArithmaticClientProtocol(t thrift.TTransport, iprot thrift.TProtocol, oprot thrift.TProtocol) *ArithmaticClient {
+	return &ArithmaticClient{
 		c: thrift.NewTStandardClient(iprot, oprot),
 	}
 }
 
-func NewCalculatorClient(c thrift.TClient) *CalculatorClient {
-	return &CalculatorClient{
+func NewArithmaticClient(c thrift.TClient) *ArithmaticClient {
+	return &ArithmaticClient{
 		c: c,
 	}
 }
 
-func (p *CalculatorClient) Client_() thrift.TClient {
+func (p *ArithmaticClient) Client_() thrift.TClient {
 	return p.c
 }
 
-func (p *CalculatorClient) Add(ctx context.Context, request *Request) (r *Response, err error) {
-	var _args CalculatorAddArgs
+func (p *ArithmaticClient) Add(ctx context.Context, request *Request) (r *Response, err error) {
+	var _args ArithmaticAddArgs
 	_args.Request = request
-	var _result CalculatorAddResult
+	var _result ArithmaticAddResult
 	if err = p.Client_().Call(ctx, "Add", &_args, &_result); err != nil {
 		return
 	}
 	return _result.GetSuccess(), nil
 }
-func (p *CalculatorClient) Subtract(ctx context.Context, request *Request) (r *Response, err error) {
-	var _args CalculatorSubtractArgs
+func (p *ArithmaticClient) Subtract(ctx context.Context, request *Request) (r *Response, err error) {
+	var _args ArithmaticSubtractArgs
 	_args.Request = request
-	var _result CalculatorSubtractResult
+	var _result ArithmaticSubtractResult
 	if err = p.Client_().Call(ctx, "Subtract", &_args, &_result); err != nil {
 		return
 	}
 	return _result.GetSuccess(), nil
 }
-func (p *CalculatorClient) Multiply(ctx context.Context, request *Request) (r *Response, err error) {
-	var _args CalculatorMultiplyArgs
+func (p *ArithmaticClient) Multiply(ctx context.Context, request *Request) (r *Response, err error) {
+	var _args ArithmaticMultiplyArgs
 	_args.Request = request
-	var _result CalculatorMultiplyResult
+	var _result ArithmaticMultiplyResult
 	if err = p.Client_().Call(ctx, "Multiply", &_args, &_result); err != nil {
 		return
 	}
 	return _result.GetSuccess(), nil
 }
-func (p *CalculatorClient) Divide(ctx context.Context, request *Request) (r *Response, err error) {
-	var _args CalculatorDivideArgs
+func (p *ArithmaticClient) Divide(ctx context.Context, request *Request) (r *Response, err error) {
+	var _args ArithmaticDivideArgs
 	_args.Request = request
-	var _result CalculatorDivideResult
+	var _result ArithmaticDivideResult
 	if err = p.Client_().Call(ctx, "Divide", &_args, &_result); err != nil {
 		return
 	}
 	return _result.GetSuccess(), nil
 }
-
-type CalculatorProcessor struct {
-	processorMap map[string]thrift.TProcessorFunction
-	handler      Calculator
+func (p *ArithmaticClient) TestValidator(ctx context.Context, request *TestValidator) (r *Response, err error) {
+	var _args ArithmaticTestValidatorArgs
+	_args.Request = request
+	var _result ArithmaticTestValidatorResult
+	if err = p.Client_().Call(ctx, "TestValidator", &_args, &_result); err != nil {
+		return
+	}
+	return _result.GetSuccess(), nil
 }
 
-func (p *CalculatorProcessor) AddToProcessorMap(key string, processor thrift.TProcessorFunction) {
+type ArithmaticProcessor struct {
+	processorMap map[string]thrift.TProcessorFunction
+	handler      Arithmatic
+}
+
+func (p *ArithmaticProcessor) AddToProcessorMap(key string, processor thrift.TProcessorFunction) {
 	p.processorMap[key] = processor
 }
 
-func (p *CalculatorProcessor) GetProcessorFunction(key string) (processor thrift.TProcessorFunction, ok bool) {
+func (p *ArithmaticProcessor) GetProcessorFunction(key string) (processor thrift.TProcessorFunction, ok bool) {
 	processor, ok = p.processorMap[key]
 	return processor, ok
 }
 
-func (p *CalculatorProcessor) ProcessorMap() map[string]thrift.TProcessorFunction {
+func (p *ArithmaticProcessor) ProcessorMap() map[string]thrift.TProcessorFunction {
 	return p.processorMap
 }
 
-func NewCalculatorProcessor(handler Calculator) *CalculatorProcessor {
-	self := &CalculatorProcessor{handler: handler, processorMap: make(map[string]thrift.TProcessorFunction)}
-	self.AddToProcessorMap("Add", &calculatorProcessorAdd{handler: handler})
-	self.AddToProcessorMap("Subtract", &calculatorProcessorSubtract{handler: handler})
-	self.AddToProcessorMap("Multiply", &calculatorProcessorMultiply{handler: handler})
-	self.AddToProcessorMap("Divide", &calculatorProcessorDivide{handler: handler})
+func NewArithmaticProcessor(handler Arithmatic) *ArithmaticProcessor {
+	self := &ArithmaticProcessor{handler: handler, processorMap: make(map[string]thrift.TProcessorFunction)}
+	self.AddToProcessorMap("Add", &arithmaticProcessorAdd{handler: handler})
+	self.AddToProcessorMap("Subtract", &arithmaticProcessorSubtract{handler: handler})
+	self.AddToProcessorMap("Multiply", &arithmaticProcessorMultiply{handler: handler})
+	self.AddToProcessorMap("Divide", &arithmaticProcessorDivide{handler: handler})
+	self.AddToProcessorMap("TestValidator", &arithmaticProcessorTestValidator{handler: handler})
 	return self
 }
-func (p *CalculatorProcessor) Process(ctx context.Context, iprot, oprot thrift.TProtocol) (success bool, err thrift.TException) {
+func (p *ArithmaticProcessor) Process(ctx context.Context, iprot, oprot thrift.TProtocol) (success bool, err thrift.TException) {
 	name, _, seqId, err := iprot.ReadMessageBegin()
 	if err != nil {
 		return false, err
@@ -781,12 +1172,12 @@ func (p *CalculatorProcessor) Process(ctx context.Context, iprot, oprot thrift.T
 	return false, x
 }
 
-type calculatorProcessorAdd struct {
-	handler Calculator
+type arithmaticProcessorAdd struct {
+	handler Arithmatic
 }
 
-func (p *calculatorProcessorAdd) Process(ctx context.Context, seqId int32, iprot, oprot thrift.TProtocol) (success bool, err thrift.TException) {
-	args := CalculatorAddArgs{}
+func (p *arithmaticProcessorAdd) Process(ctx context.Context, seqId int32, iprot, oprot thrift.TProtocol) (success bool, err thrift.TException) {
+	args := ArithmaticAddArgs{}
 	if err = args.Read(iprot); err != nil {
 		iprot.ReadMessageEnd()
 		x := thrift.NewTApplicationException(thrift.PROTOCOL_ERROR, err.Error())
@@ -799,7 +1190,7 @@ func (p *calculatorProcessorAdd) Process(ctx context.Context, seqId int32, iprot
 
 	iprot.ReadMessageEnd()
 	var err2 error
-	result := CalculatorAddResult{}
+	result := ArithmaticAddResult{}
 	var retval *Response
 	if retval, err2 = p.handler.Add(ctx, args.Request); err2 != nil {
 		x := thrift.NewTApplicationException(thrift.INTERNAL_ERROR, "Internal error processing Add: "+err2.Error())
@@ -829,12 +1220,12 @@ func (p *calculatorProcessorAdd) Process(ctx context.Context, seqId int32, iprot
 	return true, err
 }
 
-type calculatorProcessorSubtract struct {
-	handler Calculator
+type arithmaticProcessorSubtract struct {
+	handler Arithmatic
 }
 
-func (p *calculatorProcessorSubtract) Process(ctx context.Context, seqId int32, iprot, oprot thrift.TProtocol) (success bool, err thrift.TException) {
-	args := CalculatorSubtractArgs{}
+func (p *arithmaticProcessorSubtract) Process(ctx context.Context, seqId int32, iprot, oprot thrift.TProtocol) (success bool, err thrift.TException) {
+	args := ArithmaticSubtractArgs{}
 	if err = args.Read(iprot); err != nil {
 		iprot.ReadMessageEnd()
 		x := thrift.NewTApplicationException(thrift.PROTOCOL_ERROR, err.Error())
@@ -847,7 +1238,7 @@ func (p *calculatorProcessorSubtract) Process(ctx context.Context, seqId int32, 
 
 	iprot.ReadMessageEnd()
 	var err2 error
-	result := CalculatorSubtractResult{}
+	result := ArithmaticSubtractResult{}
 	var retval *Response
 	if retval, err2 = p.handler.Subtract(ctx, args.Request); err2 != nil {
 		x := thrift.NewTApplicationException(thrift.INTERNAL_ERROR, "Internal error processing Subtract: "+err2.Error())
@@ -877,12 +1268,12 @@ func (p *calculatorProcessorSubtract) Process(ctx context.Context, seqId int32, 
 	return true, err
 }
 
-type calculatorProcessorMultiply struct {
-	handler Calculator
+type arithmaticProcessorMultiply struct {
+	handler Arithmatic
 }
 
-func (p *calculatorProcessorMultiply) Process(ctx context.Context, seqId int32, iprot, oprot thrift.TProtocol) (success bool, err thrift.TException) {
-	args := CalculatorMultiplyArgs{}
+func (p *arithmaticProcessorMultiply) Process(ctx context.Context, seqId int32, iprot, oprot thrift.TProtocol) (success bool, err thrift.TException) {
+	args := ArithmaticMultiplyArgs{}
 	if err = args.Read(iprot); err != nil {
 		iprot.ReadMessageEnd()
 		x := thrift.NewTApplicationException(thrift.PROTOCOL_ERROR, err.Error())
@@ -895,7 +1286,7 @@ func (p *calculatorProcessorMultiply) Process(ctx context.Context, seqId int32, 
 
 	iprot.ReadMessageEnd()
 	var err2 error
-	result := CalculatorMultiplyResult{}
+	result := ArithmaticMultiplyResult{}
 	var retval *Response
 	if retval, err2 = p.handler.Multiply(ctx, args.Request); err2 != nil {
 		x := thrift.NewTApplicationException(thrift.INTERNAL_ERROR, "Internal error processing Multiply: "+err2.Error())
@@ -925,12 +1316,12 @@ func (p *calculatorProcessorMultiply) Process(ctx context.Context, seqId int32, 
 	return true, err
 }
 
-type calculatorProcessorDivide struct {
-	handler Calculator
+type arithmaticProcessorDivide struct {
+	handler Arithmatic
 }
 
-func (p *calculatorProcessorDivide) Process(ctx context.Context, seqId int32, iprot, oprot thrift.TProtocol) (success bool, err thrift.TException) {
-	args := CalculatorDivideArgs{}
+func (p *arithmaticProcessorDivide) Process(ctx context.Context, seqId int32, iprot, oprot thrift.TProtocol) (success bool, err thrift.TException) {
+	args := ArithmaticDivideArgs{}
 	if err = args.Read(iprot); err != nil {
 		iprot.ReadMessageEnd()
 		x := thrift.NewTApplicationException(thrift.PROTOCOL_ERROR, err.Error())
@@ -943,7 +1334,7 @@ func (p *calculatorProcessorDivide) Process(ctx context.Context, seqId int32, ip
 
 	iprot.ReadMessageEnd()
 	var err2 error
-	result := CalculatorDivideResult{}
+	result := ArithmaticDivideResult{}
 	var retval *Response
 	if retval, err2 = p.handler.Divide(ctx, args.Request); err2 != nil {
 		x := thrift.NewTApplicationException(thrift.INTERNAL_ERROR, "Internal error processing Divide: "+err2.Error())
@@ -973,39 +1364,87 @@ func (p *calculatorProcessorDivide) Process(ctx context.Context, seqId int32, ip
 	return true, err
 }
 
-type CalculatorAddArgs struct {
+type arithmaticProcessorTestValidator struct {
+	handler Arithmatic
+}
+
+func (p *arithmaticProcessorTestValidator) Process(ctx context.Context, seqId int32, iprot, oprot thrift.TProtocol) (success bool, err thrift.TException) {
+	args := ArithmaticTestValidatorArgs{}
+	if err = args.Read(iprot); err != nil {
+		iprot.ReadMessageEnd()
+		x := thrift.NewTApplicationException(thrift.PROTOCOL_ERROR, err.Error())
+		oprot.WriteMessageBegin("TestValidator", thrift.EXCEPTION, seqId)
+		x.Write(oprot)
+		oprot.WriteMessageEnd()
+		oprot.Flush(ctx)
+		return false, err
+	}
+
+	iprot.ReadMessageEnd()
+	var err2 error
+	result := ArithmaticTestValidatorResult{}
+	var retval *Response
+	if retval, err2 = p.handler.TestValidator(ctx, args.Request); err2 != nil {
+		x := thrift.NewTApplicationException(thrift.INTERNAL_ERROR, "Internal error processing TestValidator: "+err2.Error())
+		oprot.WriteMessageBegin("TestValidator", thrift.EXCEPTION, seqId)
+		x.Write(oprot)
+		oprot.WriteMessageEnd()
+		oprot.Flush(ctx)
+		return true, err2
+	} else {
+		result.Success = retval
+	}
+	if err2 = oprot.WriteMessageBegin("TestValidator", thrift.REPLY, seqId); err2 != nil {
+		err = err2
+	}
+	if err2 = result.Write(oprot); err == nil && err2 != nil {
+		err = err2
+	}
+	if err2 = oprot.WriteMessageEnd(); err == nil && err2 != nil {
+		err = err2
+	}
+	if err2 = oprot.Flush(ctx); err == nil && err2 != nil {
+		err = err2
+	}
+	if err != nil {
+		return
+	}
+	return true, err
+}
+
+type ArithmaticAddArgs struct {
 	Request *Request `thrift:"request,1" frugal:"1,default,Request" json:"request"`
 }
 
-func NewCalculatorAddArgs() *CalculatorAddArgs {
-	return &CalculatorAddArgs{}
+func NewArithmaticAddArgs() *ArithmaticAddArgs {
+	return &ArithmaticAddArgs{}
 }
 
-func (p *CalculatorAddArgs) InitDefault() {
-	*p = CalculatorAddArgs{}
+func (p *ArithmaticAddArgs) InitDefault() {
+	*p = ArithmaticAddArgs{}
 }
 
-var CalculatorAddArgs_Request_DEFAULT *Request
+var ArithmaticAddArgs_Request_DEFAULT *Request
 
-func (p *CalculatorAddArgs) GetRequest() (v *Request) {
+func (p *ArithmaticAddArgs) GetRequest() (v *Request) {
 	if !p.IsSetRequest() {
-		return CalculatorAddArgs_Request_DEFAULT
+		return ArithmaticAddArgs_Request_DEFAULT
 	}
 	return p.Request
 }
-func (p *CalculatorAddArgs) SetRequest(val *Request) {
+func (p *ArithmaticAddArgs) SetRequest(val *Request) {
 	p.Request = val
 }
 
-var fieldIDToName_CalculatorAddArgs = map[int16]string{
+var fieldIDToName_ArithmaticAddArgs = map[int16]string{
 	1: "request",
 }
 
-func (p *CalculatorAddArgs) IsSetRequest() bool {
+func (p *ArithmaticAddArgs) IsSetRequest() bool {
 	return p.Request != nil
 }
 
-func (p *CalculatorAddArgs) Read(iprot thrift.TProtocol) (err error) {
+func (p *ArithmaticAddArgs) Read(iprot thrift.TProtocol) (err error) {
 
 	var fieldTypeId thrift.TType
 	var fieldId int16
@@ -1054,7 +1493,7 @@ ReadStructBeginError:
 ReadFieldBeginError:
 	return thrift.PrependError(fmt.Sprintf("%T read field %d begin error: ", p, fieldId), err)
 ReadFieldError:
-	return thrift.PrependError(fmt.Sprintf("%T read field %d '%s' error: ", p, fieldId, fieldIDToName_CalculatorAddArgs[fieldId]), err)
+	return thrift.PrependError(fmt.Sprintf("%T read field %d '%s' error: ", p, fieldId, fieldIDToName_ArithmaticAddArgs[fieldId]), err)
 SkipFieldError:
 	return thrift.PrependError(fmt.Sprintf("%T field %d skip type %d error: ", p, fieldId, fieldTypeId), err)
 
@@ -1064,7 +1503,7 @@ ReadStructEndError:
 	return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
 }
 
-func (p *CalculatorAddArgs) ReadField1(iprot thrift.TProtocol) error {
+func (p *ArithmaticAddArgs) ReadField1(iprot thrift.TProtocol) error {
 	p.Request = NewRequest()
 	if err := p.Request.Read(iprot); err != nil {
 		return err
@@ -1072,7 +1511,7 @@ func (p *CalculatorAddArgs) ReadField1(iprot thrift.TProtocol) error {
 	return nil
 }
 
-func (p *CalculatorAddArgs) Write(oprot thrift.TProtocol) (err error) {
+func (p *ArithmaticAddArgs) Write(oprot thrift.TProtocol) (err error) {
 	var fieldId int16
 	if err = oprot.WriteStructBegin("Add_args"); err != nil {
 		goto WriteStructBeginError
@@ -1101,7 +1540,7 @@ WriteStructEndError:
 	return thrift.PrependError(fmt.Sprintf("%T write struct end error: ", p), err)
 }
 
-func (p *CalculatorAddArgs) writeField1(oprot thrift.TProtocol) (err error) {
+func (p *ArithmaticAddArgs) writeField1(oprot thrift.TProtocol) (err error) {
 	if err = oprot.WriteFieldBegin("request", thrift.STRUCT, 1); err != nil {
 		goto WriteFieldBeginError
 	}
@@ -1118,14 +1557,14 @@ WriteFieldEndError:
 	return thrift.PrependError(fmt.Sprintf("%T write field 1 end error: ", p), err)
 }
 
-func (p *CalculatorAddArgs) String() string {
+func (p *ArithmaticAddArgs) String() string {
 	if p == nil {
 		return "<nil>"
 	}
-	return fmt.Sprintf("CalculatorAddArgs(%+v)", *p)
+	return fmt.Sprintf("ArithmaticAddArgs(%+v)", *p)
 }
 
-func (p *CalculatorAddArgs) DeepEqual(ano *CalculatorAddArgs) bool {
+func (p *ArithmaticAddArgs) DeepEqual(ano *ArithmaticAddArgs) bool {
 	if p == ano {
 		return true
 	} else if p == nil || ano == nil {
@@ -1137,7 +1576,7 @@ func (p *CalculatorAddArgs) DeepEqual(ano *CalculatorAddArgs) bool {
 	return true
 }
 
-func (p *CalculatorAddArgs) Field1DeepEqual(src *Request) bool {
+func (p *ArithmaticAddArgs) Field1DeepEqual(src *Request) bool {
 
 	if !p.Request.DeepEqual(src) {
 		return false
@@ -1145,39 +1584,39 @@ func (p *CalculatorAddArgs) Field1DeepEqual(src *Request) bool {
 	return true
 }
 
-type CalculatorAddResult struct {
+type ArithmaticAddResult struct {
 	Success *Response `thrift:"success,0,optional" frugal:"0,optional,Response" json:"success,omitempty"`
 }
 
-func NewCalculatorAddResult() *CalculatorAddResult {
-	return &CalculatorAddResult{}
+func NewArithmaticAddResult() *ArithmaticAddResult {
+	return &ArithmaticAddResult{}
 }
 
-func (p *CalculatorAddResult) InitDefault() {
-	*p = CalculatorAddResult{}
+func (p *ArithmaticAddResult) InitDefault() {
+	*p = ArithmaticAddResult{}
 }
 
-var CalculatorAddResult_Success_DEFAULT *Response
+var ArithmaticAddResult_Success_DEFAULT *Response
 
-func (p *CalculatorAddResult) GetSuccess() (v *Response) {
+func (p *ArithmaticAddResult) GetSuccess() (v *Response) {
 	if !p.IsSetSuccess() {
-		return CalculatorAddResult_Success_DEFAULT
+		return ArithmaticAddResult_Success_DEFAULT
 	}
 	return p.Success
 }
-func (p *CalculatorAddResult) SetSuccess(x interface{}) {
+func (p *ArithmaticAddResult) SetSuccess(x interface{}) {
 	p.Success = x.(*Response)
 }
 
-var fieldIDToName_CalculatorAddResult = map[int16]string{
+var fieldIDToName_ArithmaticAddResult = map[int16]string{
 	0: "success",
 }
 
-func (p *CalculatorAddResult) IsSetSuccess() bool {
+func (p *ArithmaticAddResult) IsSetSuccess() bool {
 	return p.Success != nil
 }
 
-func (p *CalculatorAddResult) Read(iprot thrift.TProtocol) (err error) {
+func (p *ArithmaticAddResult) Read(iprot thrift.TProtocol) (err error) {
 
 	var fieldTypeId thrift.TType
 	var fieldId int16
@@ -1226,7 +1665,7 @@ ReadStructBeginError:
 ReadFieldBeginError:
 	return thrift.PrependError(fmt.Sprintf("%T read field %d begin error: ", p, fieldId), err)
 ReadFieldError:
-	return thrift.PrependError(fmt.Sprintf("%T read field %d '%s' error: ", p, fieldId, fieldIDToName_CalculatorAddResult[fieldId]), err)
+	return thrift.PrependError(fmt.Sprintf("%T read field %d '%s' error: ", p, fieldId, fieldIDToName_ArithmaticAddResult[fieldId]), err)
 SkipFieldError:
 	return thrift.PrependError(fmt.Sprintf("%T field %d skip type %d error: ", p, fieldId, fieldTypeId), err)
 
@@ -1236,7 +1675,7 @@ ReadStructEndError:
 	return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
 }
 
-func (p *CalculatorAddResult) ReadField0(iprot thrift.TProtocol) error {
+func (p *ArithmaticAddResult) ReadField0(iprot thrift.TProtocol) error {
 	p.Success = NewResponse()
 	if err := p.Success.Read(iprot); err != nil {
 		return err
@@ -1244,7 +1683,7 @@ func (p *CalculatorAddResult) ReadField0(iprot thrift.TProtocol) error {
 	return nil
 }
 
-func (p *CalculatorAddResult) Write(oprot thrift.TProtocol) (err error) {
+func (p *ArithmaticAddResult) Write(oprot thrift.TProtocol) (err error) {
 	var fieldId int16
 	if err = oprot.WriteStructBegin("Add_result"); err != nil {
 		goto WriteStructBeginError
@@ -1273,7 +1712,7 @@ WriteStructEndError:
 	return thrift.PrependError(fmt.Sprintf("%T write struct end error: ", p), err)
 }
 
-func (p *CalculatorAddResult) writeField0(oprot thrift.TProtocol) (err error) {
+func (p *ArithmaticAddResult) writeField0(oprot thrift.TProtocol) (err error) {
 	if p.IsSetSuccess() {
 		if err = oprot.WriteFieldBegin("success", thrift.STRUCT, 0); err != nil {
 			goto WriteFieldBeginError
@@ -1292,14 +1731,14 @@ WriteFieldEndError:
 	return thrift.PrependError(fmt.Sprintf("%T write field 0 end error: ", p), err)
 }
 
-func (p *CalculatorAddResult) String() string {
+func (p *ArithmaticAddResult) String() string {
 	if p == nil {
 		return "<nil>"
 	}
-	return fmt.Sprintf("CalculatorAddResult(%+v)", *p)
+	return fmt.Sprintf("ArithmaticAddResult(%+v)", *p)
 }
 
-func (p *CalculatorAddResult) DeepEqual(ano *CalculatorAddResult) bool {
+func (p *ArithmaticAddResult) DeepEqual(ano *ArithmaticAddResult) bool {
 	if p == ano {
 		return true
 	} else if p == nil || ano == nil {
@@ -1311,7 +1750,7 @@ func (p *CalculatorAddResult) DeepEqual(ano *CalculatorAddResult) bool {
 	return true
 }
 
-func (p *CalculatorAddResult) Field0DeepEqual(src *Response) bool {
+func (p *ArithmaticAddResult) Field0DeepEqual(src *Response) bool {
 
 	if !p.Success.DeepEqual(src) {
 		return false
@@ -1319,39 +1758,39 @@ func (p *CalculatorAddResult) Field0DeepEqual(src *Response) bool {
 	return true
 }
 
-type CalculatorSubtractArgs struct {
+type ArithmaticSubtractArgs struct {
 	Request *Request `thrift:"request,1" frugal:"1,default,Request" json:"request"`
 }
 
-func NewCalculatorSubtractArgs() *CalculatorSubtractArgs {
-	return &CalculatorSubtractArgs{}
+func NewArithmaticSubtractArgs() *ArithmaticSubtractArgs {
+	return &ArithmaticSubtractArgs{}
 }
 
-func (p *CalculatorSubtractArgs) InitDefault() {
-	*p = CalculatorSubtractArgs{}
+func (p *ArithmaticSubtractArgs) InitDefault() {
+	*p = ArithmaticSubtractArgs{}
 }
 
-var CalculatorSubtractArgs_Request_DEFAULT *Request
+var ArithmaticSubtractArgs_Request_DEFAULT *Request
 
-func (p *CalculatorSubtractArgs) GetRequest() (v *Request) {
+func (p *ArithmaticSubtractArgs) GetRequest() (v *Request) {
 	if !p.IsSetRequest() {
-		return CalculatorSubtractArgs_Request_DEFAULT
+		return ArithmaticSubtractArgs_Request_DEFAULT
 	}
 	return p.Request
 }
-func (p *CalculatorSubtractArgs) SetRequest(val *Request) {
+func (p *ArithmaticSubtractArgs) SetRequest(val *Request) {
 	p.Request = val
 }
 
-var fieldIDToName_CalculatorSubtractArgs = map[int16]string{
+var fieldIDToName_ArithmaticSubtractArgs = map[int16]string{
 	1: "request",
 }
 
-func (p *CalculatorSubtractArgs) IsSetRequest() bool {
+func (p *ArithmaticSubtractArgs) IsSetRequest() bool {
 	return p.Request != nil
 }
 
-func (p *CalculatorSubtractArgs) Read(iprot thrift.TProtocol) (err error) {
+func (p *ArithmaticSubtractArgs) Read(iprot thrift.TProtocol) (err error) {
 
 	var fieldTypeId thrift.TType
 	var fieldId int16
@@ -1400,7 +1839,7 @@ ReadStructBeginError:
 ReadFieldBeginError:
 	return thrift.PrependError(fmt.Sprintf("%T read field %d begin error: ", p, fieldId), err)
 ReadFieldError:
-	return thrift.PrependError(fmt.Sprintf("%T read field %d '%s' error: ", p, fieldId, fieldIDToName_CalculatorSubtractArgs[fieldId]), err)
+	return thrift.PrependError(fmt.Sprintf("%T read field %d '%s' error: ", p, fieldId, fieldIDToName_ArithmaticSubtractArgs[fieldId]), err)
 SkipFieldError:
 	return thrift.PrependError(fmt.Sprintf("%T field %d skip type %d error: ", p, fieldId, fieldTypeId), err)
 
@@ -1410,7 +1849,7 @@ ReadStructEndError:
 	return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
 }
 
-func (p *CalculatorSubtractArgs) ReadField1(iprot thrift.TProtocol) error {
+func (p *ArithmaticSubtractArgs) ReadField1(iprot thrift.TProtocol) error {
 	p.Request = NewRequest()
 	if err := p.Request.Read(iprot); err != nil {
 		return err
@@ -1418,7 +1857,7 @@ func (p *CalculatorSubtractArgs) ReadField1(iprot thrift.TProtocol) error {
 	return nil
 }
 
-func (p *CalculatorSubtractArgs) Write(oprot thrift.TProtocol) (err error) {
+func (p *ArithmaticSubtractArgs) Write(oprot thrift.TProtocol) (err error) {
 	var fieldId int16
 	if err = oprot.WriteStructBegin("Subtract_args"); err != nil {
 		goto WriteStructBeginError
@@ -1447,7 +1886,7 @@ WriteStructEndError:
 	return thrift.PrependError(fmt.Sprintf("%T write struct end error: ", p), err)
 }
 
-func (p *CalculatorSubtractArgs) writeField1(oprot thrift.TProtocol) (err error) {
+func (p *ArithmaticSubtractArgs) writeField1(oprot thrift.TProtocol) (err error) {
 	if err = oprot.WriteFieldBegin("request", thrift.STRUCT, 1); err != nil {
 		goto WriteFieldBeginError
 	}
@@ -1464,14 +1903,14 @@ WriteFieldEndError:
 	return thrift.PrependError(fmt.Sprintf("%T write field 1 end error: ", p), err)
 }
 
-func (p *CalculatorSubtractArgs) String() string {
+func (p *ArithmaticSubtractArgs) String() string {
 	if p == nil {
 		return "<nil>"
 	}
-	return fmt.Sprintf("CalculatorSubtractArgs(%+v)", *p)
+	return fmt.Sprintf("ArithmaticSubtractArgs(%+v)", *p)
 }
 
-func (p *CalculatorSubtractArgs) DeepEqual(ano *CalculatorSubtractArgs) bool {
+func (p *ArithmaticSubtractArgs) DeepEqual(ano *ArithmaticSubtractArgs) bool {
 	if p == ano {
 		return true
 	} else if p == nil || ano == nil {
@@ -1483,7 +1922,7 @@ func (p *CalculatorSubtractArgs) DeepEqual(ano *CalculatorSubtractArgs) bool {
 	return true
 }
 
-func (p *CalculatorSubtractArgs) Field1DeepEqual(src *Request) bool {
+func (p *ArithmaticSubtractArgs) Field1DeepEqual(src *Request) bool {
 
 	if !p.Request.DeepEqual(src) {
 		return false
@@ -1491,39 +1930,39 @@ func (p *CalculatorSubtractArgs) Field1DeepEqual(src *Request) bool {
 	return true
 }
 
-type CalculatorSubtractResult struct {
+type ArithmaticSubtractResult struct {
 	Success *Response `thrift:"success,0,optional" frugal:"0,optional,Response" json:"success,omitempty"`
 }
 
-func NewCalculatorSubtractResult() *CalculatorSubtractResult {
-	return &CalculatorSubtractResult{}
+func NewArithmaticSubtractResult() *ArithmaticSubtractResult {
+	return &ArithmaticSubtractResult{}
 }
 
-func (p *CalculatorSubtractResult) InitDefault() {
-	*p = CalculatorSubtractResult{}
+func (p *ArithmaticSubtractResult) InitDefault() {
+	*p = ArithmaticSubtractResult{}
 }
 
-var CalculatorSubtractResult_Success_DEFAULT *Response
+var ArithmaticSubtractResult_Success_DEFAULT *Response
 
-func (p *CalculatorSubtractResult) GetSuccess() (v *Response) {
+func (p *ArithmaticSubtractResult) GetSuccess() (v *Response) {
 	if !p.IsSetSuccess() {
-		return CalculatorSubtractResult_Success_DEFAULT
+		return ArithmaticSubtractResult_Success_DEFAULT
 	}
 	return p.Success
 }
-func (p *CalculatorSubtractResult) SetSuccess(x interface{}) {
+func (p *ArithmaticSubtractResult) SetSuccess(x interface{}) {
 	p.Success = x.(*Response)
 }
 
-var fieldIDToName_CalculatorSubtractResult = map[int16]string{
+var fieldIDToName_ArithmaticSubtractResult = map[int16]string{
 	0: "success",
 }
 
-func (p *CalculatorSubtractResult) IsSetSuccess() bool {
+func (p *ArithmaticSubtractResult) IsSetSuccess() bool {
 	return p.Success != nil
 }
 
-func (p *CalculatorSubtractResult) Read(iprot thrift.TProtocol) (err error) {
+func (p *ArithmaticSubtractResult) Read(iprot thrift.TProtocol) (err error) {
 
 	var fieldTypeId thrift.TType
 	var fieldId int16
@@ -1572,7 +2011,7 @@ ReadStructBeginError:
 ReadFieldBeginError:
 	return thrift.PrependError(fmt.Sprintf("%T read field %d begin error: ", p, fieldId), err)
 ReadFieldError:
-	return thrift.PrependError(fmt.Sprintf("%T read field %d '%s' error: ", p, fieldId, fieldIDToName_CalculatorSubtractResult[fieldId]), err)
+	return thrift.PrependError(fmt.Sprintf("%T read field %d '%s' error: ", p, fieldId, fieldIDToName_ArithmaticSubtractResult[fieldId]), err)
 SkipFieldError:
 	return thrift.PrependError(fmt.Sprintf("%T field %d skip type %d error: ", p, fieldId, fieldTypeId), err)
 
@@ -1582,7 +2021,7 @@ ReadStructEndError:
 	return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
 }
 
-func (p *CalculatorSubtractResult) ReadField0(iprot thrift.TProtocol) error {
+func (p *ArithmaticSubtractResult) ReadField0(iprot thrift.TProtocol) error {
 	p.Success = NewResponse()
 	if err := p.Success.Read(iprot); err != nil {
 		return err
@@ -1590,7 +2029,7 @@ func (p *CalculatorSubtractResult) ReadField0(iprot thrift.TProtocol) error {
 	return nil
 }
 
-func (p *CalculatorSubtractResult) Write(oprot thrift.TProtocol) (err error) {
+func (p *ArithmaticSubtractResult) Write(oprot thrift.TProtocol) (err error) {
 	var fieldId int16
 	if err = oprot.WriteStructBegin("Subtract_result"); err != nil {
 		goto WriteStructBeginError
@@ -1619,7 +2058,7 @@ WriteStructEndError:
 	return thrift.PrependError(fmt.Sprintf("%T write struct end error: ", p), err)
 }
 
-func (p *CalculatorSubtractResult) writeField0(oprot thrift.TProtocol) (err error) {
+func (p *ArithmaticSubtractResult) writeField0(oprot thrift.TProtocol) (err error) {
 	if p.IsSetSuccess() {
 		if err = oprot.WriteFieldBegin("success", thrift.STRUCT, 0); err != nil {
 			goto WriteFieldBeginError
@@ -1638,14 +2077,14 @@ WriteFieldEndError:
 	return thrift.PrependError(fmt.Sprintf("%T write field 0 end error: ", p), err)
 }
 
-func (p *CalculatorSubtractResult) String() string {
+func (p *ArithmaticSubtractResult) String() string {
 	if p == nil {
 		return "<nil>"
 	}
-	return fmt.Sprintf("CalculatorSubtractResult(%+v)", *p)
+	return fmt.Sprintf("ArithmaticSubtractResult(%+v)", *p)
 }
 
-func (p *CalculatorSubtractResult) DeepEqual(ano *CalculatorSubtractResult) bool {
+func (p *ArithmaticSubtractResult) DeepEqual(ano *ArithmaticSubtractResult) bool {
 	if p == ano {
 		return true
 	} else if p == nil || ano == nil {
@@ -1657,7 +2096,7 @@ func (p *CalculatorSubtractResult) DeepEqual(ano *CalculatorSubtractResult) bool
 	return true
 }
 
-func (p *CalculatorSubtractResult) Field0DeepEqual(src *Response) bool {
+func (p *ArithmaticSubtractResult) Field0DeepEqual(src *Response) bool {
 
 	if !p.Success.DeepEqual(src) {
 		return false
@@ -1665,39 +2104,39 @@ func (p *CalculatorSubtractResult) Field0DeepEqual(src *Response) bool {
 	return true
 }
 
-type CalculatorMultiplyArgs struct {
+type ArithmaticMultiplyArgs struct {
 	Request *Request `thrift:"request,1" frugal:"1,default,Request" json:"request"`
 }
 
-func NewCalculatorMultiplyArgs() *CalculatorMultiplyArgs {
-	return &CalculatorMultiplyArgs{}
+func NewArithmaticMultiplyArgs() *ArithmaticMultiplyArgs {
+	return &ArithmaticMultiplyArgs{}
 }
 
-func (p *CalculatorMultiplyArgs) InitDefault() {
-	*p = CalculatorMultiplyArgs{}
+func (p *ArithmaticMultiplyArgs) InitDefault() {
+	*p = ArithmaticMultiplyArgs{}
 }
 
-var CalculatorMultiplyArgs_Request_DEFAULT *Request
+var ArithmaticMultiplyArgs_Request_DEFAULT *Request
 
-func (p *CalculatorMultiplyArgs) GetRequest() (v *Request) {
+func (p *ArithmaticMultiplyArgs) GetRequest() (v *Request) {
 	if !p.IsSetRequest() {
-		return CalculatorMultiplyArgs_Request_DEFAULT
+		return ArithmaticMultiplyArgs_Request_DEFAULT
 	}
 	return p.Request
 }
-func (p *CalculatorMultiplyArgs) SetRequest(val *Request) {
+func (p *ArithmaticMultiplyArgs) SetRequest(val *Request) {
 	p.Request = val
 }
 
-var fieldIDToName_CalculatorMultiplyArgs = map[int16]string{
+var fieldIDToName_ArithmaticMultiplyArgs = map[int16]string{
 	1: "request",
 }
 
-func (p *CalculatorMultiplyArgs) IsSetRequest() bool {
+func (p *ArithmaticMultiplyArgs) IsSetRequest() bool {
 	return p.Request != nil
 }
 
-func (p *CalculatorMultiplyArgs) Read(iprot thrift.TProtocol) (err error) {
+func (p *ArithmaticMultiplyArgs) Read(iprot thrift.TProtocol) (err error) {
 
 	var fieldTypeId thrift.TType
 	var fieldId int16
@@ -1746,7 +2185,7 @@ ReadStructBeginError:
 ReadFieldBeginError:
 	return thrift.PrependError(fmt.Sprintf("%T read field %d begin error: ", p, fieldId), err)
 ReadFieldError:
-	return thrift.PrependError(fmt.Sprintf("%T read field %d '%s' error: ", p, fieldId, fieldIDToName_CalculatorMultiplyArgs[fieldId]), err)
+	return thrift.PrependError(fmt.Sprintf("%T read field %d '%s' error: ", p, fieldId, fieldIDToName_ArithmaticMultiplyArgs[fieldId]), err)
 SkipFieldError:
 	return thrift.PrependError(fmt.Sprintf("%T field %d skip type %d error: ", p, fieldId, fieldTypeId), err)
 
@@ -1756,7 +2195,7 @@ ReadStructEndError:
 	return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
 }
 
-func (p *CalculatorMultiplyArgs) ReadField1(iprot thrift.TProtocol) error {
+func (p *ArithmaticMultiplyArgs) ReadField1(iprot thrift.TProtocol) error {
 	p.Request = NewRequest()
 	if err := p.Request.Read(iprot); err != nil {
 		return err
@@ -1764,7 +2203,7 @@ func (p *CalculatorMultiplyArgs) ReadField1(iprot thrift.TProtocol) error {
 	return nil
 }
 
-func (p *CalculatorMultiplyArgs) Write(oprot thrift.TProtocol) (err error) {
+func (p *ArithmaticMultiplyArgs) Write(oprot thrift.TProtocol) (err error) {
 	var fieldId int16
 	if err = oprot.WriteStructBegin("Multiply_args"); err != nil {
 		goto WriteStructBeginError
@@ -1793,7 +2232,7 @@ WriteStructEndError:
 	return thrift.PrependError(fmt.Sprintf("%T write struct end error: ", p), err)
 }
 
-func (p *CalculatorMultiplyArgs) writeField1(oprot thrift.TProtocol) (err error) {
+func (p *ArithmaticMultiplyArgs) writeField1(oprot thrift.TProtocol) (err error) {
 	if err = oprot.WriteFieldBegin("request", thrift.STRUCT, 1); err != nil {
 		goto WriteFieldBeginError
 	}
@@ -1810,14 +2249,14 @@ WriteFieldEndError:
 	return thrift.PrependError(fmt.Sprintf("%T write field 1 end error: ", p), err)
 }
 
-func (p *CalculatorMultiplyArgs) String() string {
+func (p *ArithmaticMultiplyArgs) String() string {
 	if p == nil {
 		return "<nil>"
 	}
-	return fmt.Sprintf("CalculatorMultiplyArgs(%+v)", *p)
+	return fmt.Sprintf("ArithmaticMultiplyArgs(%+v)", *p)
 }
 
-func (p *CalculatorMultiplyArgs) DeepEqual(ano *CalculatorMultiplyArgs) bool {
+func (p *ArithmaticMultiplyArgs) DeepEqual(ano *ArithmaticMultiplyArgs) bool {
 	if p == ano {
 		return true
 	} else if p == nil || ano == nil {
@@ -1829,7 +2268,7 @@ func (p *CalculatorMultiplyArgs) DeepEqual(ano *CalculatorMultiplyArgs) bool {
 	return true
 }
 
-func (p *CalculatorMultiplyArgs) Field1DeepEqual(src *Request) bool {
+func (p *ArithmaticMultiplyArgs) Field1DeepEqual(src *Request) bool {
 
 	if !p.Request.DeepEqual(src) {
 		return false
@@ -1837,39 +2276,39 @@ func (p *CalculatorMultiplyArgs) Field1DeepEqual(src *Request) bool {
 	return true
 }
 
-type CalculatorMultiplyResult struct {
+type ArithmaticMultiplyResult struct {
 	Success *Response `thrift:"success,0,optional" frugal:"0,optional,Response" json:"success,omitempty"`
 }
 
-func NewCalculatorMultiplyResult() *CalculatorMultiplyResult {
-	return &CalculatorMultiplyResult{}
+func NewArithmaticMultiplyResult() *ArithmaticMultiplyResult {
+	return &ArithmaticMultiplyResult{}
 }
 
-func (p *CalculatorMultiplyResult) InitDefault() {
-	*p = CalculatorMultiplyResult{}
+func (p *ArithmaticMultiplyResult) InitDefault() {
+	*p = ArithmaticMultiplyResult{}
 }
 
-var CalculatorMultiplyResult_Success_DEFAULT *Response
+var ArithmaticMultiplyResult_Success_DEFAULT *Response
 
-func (p *CalculatorMultiplyResult) GetSuccess() (v *Response) {
+func (p *ArithmaticMultiplyResult) GetSuccess() (v *Response) {
 	if !p.IsSetSuccess() {
-		return CalculatorMultiplyResult_Success_DEFAULT
+		return ArithmaticMultiplyResult_Success_DEFAULT
 	}
 	return p.Success
 }
-func (p *CalculatorMultiplyResult) SetSuccess(x interface{}) {
+func (p *ArithmaticMultiplyResult) SetSuccess(x interface{}) {
 	p.Success = x.(*Response)
 }
 
-var fieldIDToName_CalculatorMultiplyResult = map[int16]string{
+var fieldIDToName_ArithmaticMultiplyResult = map[int16]string{
 	0: "success",
 }
 
-func (p *CalculatorMultiplyResult) IsSetSuccess() bool {
+func (p *ArithmaticMultiplyResult) IsSetSuccess() bool {
 	return p.Success != nil
 }
 
-func (p *CalculatorMultiplyResult) Read(iprot thrift.TProtocol) (err error) {
+func (p *ArithmaticMultiplyResult) Read(iprot thrift.TProtocol) (err error) {
 
 	var fieldTypeId thrift.TType
 	var fieldId int16
@@ -1918,7 +2357,7 @@ ReadStructBeginError:
 ReadFieldBeginError:
 	return thrift.PrependError(fmt.Sprintf("%T read field %d begin error: ", p, fieldId), err)
 ReadFieldError:
-	return thrift.PrependError(fmt.Sprintf("%T read field %d '%s' error: ", p, fieldId, fieldIDToName_CalculatorMultiplyResult[fieldId]), err)
+	return thrift.PrependError(fmt.Sprintf("%T read field %d '%s' error: ", p, fieldId, fieldIDToName_ArithmaticMultiplyResult[fieldId]), err)
 SkipFieldError:
 	return thrift.PrependError(fmt.Sprintf("%T field %d skip type %d error: ", p, fieldId, fieldTypeId), err)
 
@@ -1928,7 +2367,7 @@ ReadStructEndError:
 	return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
 }
 
-func (p *CalculatorMultiplyResult) ReadField0(iprot thrift.TProtocol) error {
+func (p *ArithmaticMultiplyResult) ReadField0(iprot thrift.TProtocol) error {
 	p.Success = NewResponse()
 	if err := p.Success.Read(iprot); err != nil {
 		return err
@@ -1936,7 +2375,7 @@ func (p *CalculatorMultiplyResult) ReadField0(iprot thrift.TProtocol) error {
 	return nil
 }
 
-func (p *CalculatorMultiplyResult) Write(oprot thrift.TProtocol) (err error) {
+func (p *ArithmaticMultiplyResult) Write(oprot thrift.TProtocol) (err error) {
 	var fieldId int16
 	if err = oprot.WriteStructBegin("Multiply_result"); err != nil {
 		goto WriteStructBeginError
@@ -1965,7 +2404,7 @@ WriteStructEndError:
 	return thrift.PrependError(fmt.Sprintf("%T write struct end error: ", p), err)
 }
 
-func (p *CalculatorMultiplyResult) writeField0(oprot thrift.TProtocol) (err error) {
+func (p *ArithmaticMultiplyResult) writeField0(oprot thrift.TProtocol) (err error) {
 	if p.IsSetSuccess() {
 		if err = oprot.WriteFieldBegin("success", thrift.STRUCT, 0); err != nil {
 			goto WriteFieldBeginError
@@ -1984,14 +2423,14 @@ WriteFieldEndError:
 	return thrift.PrependError(fmt.Sprintf("%T write field 0 end error: ", p), err)
 }
 
-func (p *CalculatorMultiplyResult) String() string {
+func (p *ArithmaticMultiplyResult) String() string {
 	if p == nil {
 		return "<nil>"
 	}
-	return fmt.Sprintf("CalculatorMultiplyResult(%+v)", *p)
+	return fmt.Sprintf("ArithmaticMultiplyResult(%+v)", *p)
 }
 
-func (p *CalculatorMultiplyResult) DeepEqual(ano *CalculatorMultiplyResult) bool {
+func (p *ArithmaticMultiplyResult) DeepEqual(ano *ArithmaticMultiplyResult) bool {
 	if p == ano {
 		return true
 	} else if p == nil || ano == nil {
@@ -2003,7 +2442,7 @@ func (p *CalculatorMultiplyResult) DeepEqual(ano *CalculatorMultiplyResult) bool
 	return true
 }
 
-func (p *CalculatorMultiplyResult) Field0DeepEqual(src *Response) bool {
+func (p *ArithmaticMultiplyResult) Field0DeepEqual(src *Response) bool {
 
 	if !p.Success.DeepEqual(src) {
 		return false
@@ -2011,39 +2450,39 @@ func (p *CalculatorMultiplyResult) Field0DeepEqual(src *Response) bool {
 	return true
 }
 
-type CalculatorDivideArgs struct {
+type ArithmaticDivideArgs struct {
 	Request *Request `thrift:"request,1" frugal:"1,default,Request" json:"request"`
 }
 
-func NewCalculatorDivideArgs() *CalculatorDivideArgs {
-	return &CalculatorDivideArgs{}
+func NewArithmaticDivideArgs() *ArithmaticDivideArgs {
+	return &ArithmaticDivideArgs{}
 }
 
-func (p *CalculatorDivideArgs) InitDefault() {
-	*p = CalculatorDivideArgs{}
+func (p *ArithmaticDivideArgs) InitDefault() {
+	*p = ArithmaticDivideArgs{}
 }
 
-var CalculatorDivideArgs_Request_DEFAULT *Request
+var ArithmaticDivideArgs_Request_DEFAULT *Request
 
-func (p *CalculatorDivideArgs) GetRequest() (v *Request) {
+func (p *ArithmaticDivideArgs) GetRequest() (v *Request) {
 	if !p.IsSetRequest() {
-		return CalculatorDivideArgs_Request_DEFAULT
+		return ArithmaticDivideArgs_Request_DEFAULT
 	}
 	return p.Request
 }
-func (p *CalculatorDivideArgs) SetRequest(val *Request) {
+func (p *ArithmaticDivideArgs) SetRequest(val *Request) {
 	p.Request = val
 }
 
-var fieldIDToName_CalculatorDivideArgs = map[int16]string{
+var fieldIDToName_ArithmaticDivideArgs = map[int16]string{
 	1: "request",
 }
 
-func (p *CalculatorDivideArgs) IsSetRequest() bool {
+func (p *ArithmaticDivideArgs) IsSetRequest() bool {
 	return p.Request != nil
 }
 
-func (p *CalculatorDivideArgs) Read(iprot thrift.TProtocol) (err error) {
+func (p *ArithmaticDivideArgs) Read(iprot thrift.TProtocol) (err error) {
 
 	var fieldTypeId thrift.TType
 	var fieldId int16
@@ -2092,7 +2531,7 @@ ReadStructBeginError:
 ReadFieldBeginError:
 	return thrift.PrependError(fmt.Sprintf("%T read field %d begin error: ", p, fieldId), err)
 ReadFieldError:
-	return thrift.PrependError(fmt.Sprintf("%T read field %d '%s' error: ", p, fieldId, fieldIDToName_CalculatorDivideArgs[fieldId]), err)
+	return thrift.PrependError(fmt.Sprintf("%T read field %d '%s' error: ", p, fieldId, fieldIDToName_ArithmaticDivideArgs[fieldId]), err)
 SkipFieldError:
 	return thrift.PrependError(fmt.Sprintf("%T field %d skip type %d error: ", p, fieldId, fieldTypeId), err)
 
@@ -2102,7 +2541,7 @@ ReadStructEndError:
 	return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
 }
 
-func (p *CalculatorDivideArgs) ReadField1(iprot thrift.TProtocol) error {
+func (p *ArithmaticDivideArgs) ReadField1(iprot thrift.TProtocol) error {
 	p.Request = NewRequest()
 	if err := p.Request.Read(iprot); err != nil {
 		return err
@@ -2110,7 +2549,7 @@ func (p *CalculatorDivideArgs) ReadField1(iprot thrift.TProtocol) error {
 	return nil
 }
 
-func (p *CalculatorDivideArgs) Write(oprot thrift.TProtocol) (err error) {
+func (p *ArithmaticDivideArgs) Write(oprot thrift.TProtocol) (err error) {
 	var fieldId int16
 	if err = oprot.WriteStructBegin("Divide_args"); err != nil {
 		goto WriteStructBeginError
@@ -2139,7 +2578,7 @@ WriteStructEndError:
 	return thrift.PrependError(fmt.Sprintf("%T write struct end error: ", p), err)
 }
 
-func (p *CalculatorDivideArgs) writeField1(oprot thrift.TProtocol) (err error) {
+func (p *ArithmaticDivideArgs) writeField1(oprot thrift.TProtocol) (err error) {
 	if err = oprot.WriteFieldBegin("request", thrift.STRUCT, 1); err != nil {
 		goto WriteFieldBeginError
 	}
@@ -2156,14 +2595,14 @@ WriteFieldEndError:
 	return thrift.PrependError(fmt.Sprintf("%T write field 1 end error: ", p), err)
 }
 
-func (p *CalculatorDivideArgs) String() string {
+func (p *ArithmaticDivideArgs) String() string {
 	if p == nil {
 		return "<nil>"
 	}
-	return fmt.Sprintf("CalculatorDivideArgs(%+v)", *p)
+	return fmt.Sprintf("ArithmaticDivideArgs(%+v)", *p)
 }
 
-func (p *CalculatorDivideArgs) DeepEqual(ano *CalculatorDivideArgs) bool {
+func (p *ArithmaticDivideArgs) DeepEqual(ano *ArithmaticDivideArgs) bool {
 	if p == ano {
 		return true
 	} else if p == nil || ano == nil {
@@ -2175,7 +2614,7 @@ func (p *CalculatorDivideArgs) DeepEqual(ano *CalculatorDivideArgs) bool {
 	return true
 }
 
-func (p *CalculatorDivideArgs) Field1DeepEqual(src *Request) bool {
+func (p *ArithmaticDivideArgs) Field1DeepEqual(src *Request) bool {
 
 	if !p.Request.DeepEqual(src) {
 		return false
@@ -2183,39 +2622,39 @@ func (p *CalculatorDivideArgs) Field1DeepEqual(src *Request) bool {
 	return true
 }
 
-type CalculatorDivideResult struct {
+type ArithmaticDivideResult struct {
 	Success *Response `thrift:"success,0,optional" frugal:"0,optional,Response" json:"success,omitempty"`
 }
 
-func NewCalculatorDivideResult() *CalculatorDivideResult {
-	return &CalculatorDivideResult{}
+func NewArithmaticDivideResult() *ArithmaticDivideResult {
+	return &ArithmaticDivideResult{}
 }
 
-func (p *CalculatorDivideResult) InitDefault() {
-	*p = CalculatorDivideResult{}
+func (p *ArithmaticDivideResult) InitDefault() {
+	*p = ArithmaticDivideResult{}
 }
 
-var CalculatorDivideResult_Success_DEFAULT *Response
+var ArithmaticDivideResult_Success_DEFAULT *Response
 
-func (p *CalculatorDivideResult) GetSuccess() (v *Response) {
+func (p *ArithmaticDivideResult) GetSuccess() (v *Response) {
 	if !p.IsSetSuccess() {
-		return CalculatorDivideResult_Success_DEFAULT
+		return ArithmaticDivideResult_Success_DEFAULT
 	}
 	return p.Success
 }
-func (p *CalculatorDivideResult) SetSuccess(x interface{}) {
+func (p *ArithmaticDivideResult) SetSuccess(x interface{}) {
 	p.Success = x.(*Response)
 }
 
-var fieldIDToName_CalculatorDivideResult = map[int16]string{
+var fieldIDToName_ArithmaticDivideResult = map[int16]string{
 	0: "success",
 }
 
-func (p *CalculatorDivideResult) IsSetSuccess() bool {
+func (p *ArithmaticDivideResult) IsSetSuccess() bool {
 	return p.Success != nil
 }
 
-func (p *CalculatorDivideResult) Read(iprot thrift.TProtocol) (err error) {
+func (p *ArithmaticDivideResult) Read(iprot thrift.TProtocol) (err error) {
 
 	var fieldTypeId thrift.TType
 	var fieldId int16
@@ -2264,7 +2703,7 @@ ReadStructBeginError:
 ReadFieldBeginError:
 	return thrift.PrependError(fmt.Sprintf("%T read field %d begin error: ", p, fieldId), err)
 ReadFieldError:
-	return thrift.PrependError(fmt.Sprintf("%T read field %d '%s' error: ", p, fieldId, fieldIDToName_CalculatorDivideResult[fieldId]), err)
+	return thrift.PrependError(fmt.Sprintf("%T read field %d '%s' error: ", p, fieldId, fieldIDToName_ArithmaticDivideResult[fieldId]), err)
 SkipFieldError:
 	return thrift.PrependError(fmt.Sprintf("%T field %d skip type %d error: ", p, fieldId, fieldTypeId), err)
 
@@ -2274,7 +2713,7 @@ ReadStructEndError:
 	return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
 }
 
-func (p *CalculatorDivideResult) ReadField0(iprot thrift.TProtocol) error {
+func (p *ArithmaticDivideResult) ReadField0(iprot thrift.TProtocol) error {
 	p.Success = NewResponse()
 	if err := p.Success.Read(iprot); err != nil {
 		return err
@@ -2282,7 +2721,7 @@ func (p *CalculatorDivideResult) ReadField0(iprot thrift.TProtocol) error {
 	return nil
 }
 
-func (p *CalculatorDivideResult) Write(oprot thrift.TProtocol) (err error) {
+func (p *ArithmaticDivideResult) Write(oprot thrift.TProtocol) (err error) {
 	var fieldId int16
 	if err = oprot.WriteStructBegin("Divide_result"); err != nil {
 		goto WriteStructBeginError
@@ -2311,7 +2750,7 @@ WriteStructEndError:
 	return thrift.PrependError(fmt.Sprintf("%T write struct end error: ", p), err)
 }
 
-func (p *CalculatorDivideResult) writeField0(oprot thrift.TProtocol) (err error) {
+func (p *ArithmaticDivideResult) writeField0(oprot thrift.TProtocol) (err error) {
 	if p.IsSetSuccess() {
 		if err = oprot.WriteFieldBegin("success", thrift.STRUCT, 0); err != nil {
 			goto WriteFieldBeginError
@@ -2330,14 +2769,14 @@ WriteFieldEndError:
 	return thrift.PrependError(fmt.Sprintf("%T write field 0 end error: ", p), err)
 }
 
-func (p *CalculatorDivideResult) String() string {
+func (p *ArithmaticDivideResult) String() string {
 	if p == nil {
 		return "<nil>"
 	}
-	return fmt.Sprintf("CalculatorDivideResult(%+v)", *p)
+	return fmt.Sprintf("ArithmaticDivideResult(%+v)", *p)
 }
 
-func (p *CalculatorDivideResult) DeepEqual(ano *CalculatorDivideResult) bool {
+func (p *ArithmaticDivideResult) DeepEqual(ano *ArithmaticDivideResult) bool {
 	if p == ano {
 		return true
 	} else if p == nil || ano == nil {
@@ -2349,7 +2788,353 @@ func (p *CalculatorDivideResult) DeepEqual(ano *CalculatorDivideResult) bool {
 	return true
 }
 
-func (p *CalculatorDivideResult) Field0DeepEqual(src *Response) bool {
+func (p *ArithmaticDivideResult) Field0DeepEqual(src *Response) bool {
+
+	if !p.Success.DeepEqual(src) {
+		return false
+	}
+	return true
+}
+
+type ArithmaticTestValidatorArgs struct {
+	Request *TestValidator `thrift:"request,1" frugal:"1,default,TestValidator" json:"request"`
+}
+
+func NewArithmaticTestValidatorArgs() *ArithmaticTestValidatorArgs {
+	return &ArithmaticTestValidatorArgs{}
+}
+
+func (p *ArithmaticTestValidatorArgs) InitDefault() {
+	*p = ArithmaticTestValidatorArgs{}
+}
+
+var ArithmaticTestValidatorArgs_Request_DEFAULT *TestValidator
+
+func (p *ArithmaticTestValidatorArgs) GetRequest() (v *TestValidator) {
+	if !p.IsSetRequest() {
+		return ArithmaticTestValidatorArgs_Request_DEFAULT
+	}
+	return p.Request
+}
+func (p *ArithmaticTestValidatorArgs) SetRequest(val *TestValidator) {
+	p.Request = val
+}
+
+var fieldIDToName_ArithmaticTestValidatorArgs = map[int16]string{
+	1: "request",
+}
+
+func (p *ArithmaticTestValidatorArgs) IsSetRequest() bool {
+	return p.Request != nil
+}
+
+func (p *ArithmaticTestValidatorArgs) Read(iprot thrift.TProtocol) (err error) {
+
+	var fieldTypeId thrift.TType
+	var fieldId int16
+
+	if _, err = iprot.ReadStructBegin(); err != nil {
+		goto ReadStructBeginError
+	}
+
+	for {
+		_, fieldTypeId, fieldId, err = iprot.ReadFieldBegin()
+		if err != nil {
+			goto ReadFieldBeginError
+		}
+		if fieldTypeId == thrift.STOP {
+			break
+		}
+
+		switch fieldId {
+		case 1:
+			if fieldTypeId == thrift.STRUCT {
+				if err = p.ReadField1(iprot); err != nil {
+					goto ReadFieldError
+				}
+			} else {
+				if err = iprot.Skip(fieldTypeId); err != nil {
+					goto SkipFieldError
+				}
+			}
+		default:
+			if err = iprot.Skip(fieldTypeId); err != nil {
+				goto SkipFieldError
+			}
+		}
+
+		if err = iprot.ReadFieldEnd(); err != nil {
+			goto ReadFieldEndError
+		}
+	}
+	if err = iprot.ReadStructEnd(); err != nil {
+		goto ReadStructEndError
+	}
+
+	return nil
+ReadStructBeginError:
+	return thrift.PrependError(fmt.Sprintf("%T read struct begin error: ", p), err)
+ReadFieldBeginError:
+	return thrift.PrependError(fmt.Sprintf("%T read field %d begin error: ", p, fieldId), err)
+ReadFieldError:
+	return thrift.PrependError(fmt.Sprintf("%T read field %d '%s' error: ", p, fieldId, fieldIDToName_ArithmaticTestValidatorArgs[fieldId]), err)
+SkipFieldError:
+	return thrift.PrependError(fmt.Sprintf("%T field %d skip type %d error: ", p, fieldId, fieldTypeId), err)
+
+ReadFieldEndError:
+	return thrift.PrependError(fmt.Sprintf("%T read field end error", p), err)
+ReadStructEndError:
+	return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
+}
+
+func (p *ArithmaticTestValidatorArgs) ReadField1(iprot thrift.TProtocol) error {
+	p.Request = NewTestValidator()
+	if err := p.Request.Read(iprot); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (p *ArithmaticTestValidatorArgs) Write(oprot thrift.TProtocol) (err error) {
+	var fieldId int16
+	if err = oprot.WriteStructBegin("TestValidator_args"); err != nil {
+		goto WriteStructBeginError
+	}
+	if p != nil {
+		if err = p.writeField1(oprot); err != nil {
+			fieldId = 1
+			goto WriteFieldError
+		}
+
+	}
+	if err = oprot.WriteFieldStop(); err != nil {
+		goto WriteFieldStopError
+	}
+	if err = oprot.WriteStructEnd(); err != nil {
+		goto WriteStructEndError
+	}
+	return nil
+WriteStructBeginError:
+	return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err)
+WriteFieldError:
+	return thrift.PrependError(fmt.Sprintf("%T write field %d error: ", p, fieldId), err)
+WriteFieldStopError:
+	return thrift.PrependError(fmt.Sprintf("%T write field stop error: ", p), err)
+WriteStructEndError:
+	return thrift.PrependError(fmt.Sprintf("%T write struct end error: ", p), err)
+}
+
+func (p *ArithmaticTestValidatorArgs) writeField1(oprot thrift.TProtocol) (err error) {
+	if err = oprot.WriteFieldBegin("request", thrift.STRUCT, 1); err != nil {
+		goto WriteFieldBeginError
+	}
+	if err := p.Request.Write(oprot); err != nil {
+		return err
+	}
+	if err = oprot.WriteFieldEnd(); err != nil {
+		goto WriteFieldEndError
+	}
+	return nil
+WriteFieldBeginError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 1 begin error: ", p), err)
+WriteFieldEndError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 1 end error: ", p), err)
+}
+
+func (p *ArithmaticTestValidatorArgs) String() string {
+	if p == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("ArithmaticTestValidatorArgs(%+v)", *p)
+}
+
+func (p *ArithmaticTestValidatorArgs) DeepEqual(ano *ArithmaticTestValidatorArgs) bool {
+	if p == ano {
+		return true
+	} else if p == nil || ano == nil {
+		return false
+	}
+	if !p.Field1DeepEqual(ano.Request) {
+		return false
+	}
+	return true
+}
+
+func (p *ArithmaticTestValidatorArgs) Field1DeepEqual(src *TestValidator) bool {
+
+	if !p.Request.DeepEqual(src) {
+		return false
+	}
+	return true
+}
+
+type ArithmaticTestValidatorResult struct {
+	Success *Response `thrift:"success,0,optional" frugal:"0,optional,Response" json:"success,omitempty"`
+}
+
+func NewArithmaticTestValidatorResult() *ArithmaticTestValidatorResult {
+	return &ArithmaticTestValidatorResult{}
+}
+
+func (p *ArithmaticTestValidatorResult) InitDefault() {
+	*p = ArithmaticTestValidatorResult{}
+}
+
+var ArithmaticTestValidatorResult_Success_DEFAULT *Response
+
+func (p *ArithmaticTestValidatorResult) GetSuccess() (v *Response) {
+	if !p.IsSetSuccess() {
+		return ArithmaticTestValidatorResult_Success_DEFAULT
+	}
+	return p.Success
+}
+func (p *ArithmaticTestValidatorResult) SetSuccess(x interface{}) {
+	p.Success = x.(*Response)
+}
+
+var fieldIDToName_ArithmaticTestValidatorResult = map[int16]string{
+	0: "success",
+}
+
+func (p *ArithmaticTestValidatorResult) IsSetSuccess() bool {
+	return p.Success != nil
+}
+
+func (p *ArithmaticTestValidatorResult) Read(iprot thrift.TProtocol) (err error) {
+
+	var fieldTypeId thrift.TType
+	var fieldId int16
+
+	if _, err = iprot.ReadStructBegin(); err != nil {
+		goto ReadStructBeginError
+	}
+
+	for {
+		_, fieldTypeId, fieldId, err = iprot.ReadFieldBegin()
+		if err != nil {
+			goto ReadFieldBeginError
+		}
+		if fieldTypeId == thrift.STOP {
+			break
+		}
+
+		switch fieldId {
+		case 0:
+			if fieldTypeId == thrift.STRUCT {
+				if err = p.ReadField0(iprot); err != nil {
+					goto ReadFieldError
+				}
+			} else {
+				if err = iprot.Skip(fieldTypeId); err != nil {
+					goto SkipFieldError
+				}
+			}
+		default:
+			if err = iprot.Skip(fieldTypeId); err != nil {
+				goto SkipFieldError
+			}
+		}
+
+		if err = iprot.ReadFieldEnd(); err != nil {
+			goto ReadFieldEndError
+		}
+	}
+	if err = iprot.ReadStructEnd(); err != nil {
+		goto ReadStructEndError
+	}
+
+	return nil
+ReadStructBeginError:
+	return thrift.PrependError(fmt.Sprintf("%T read struct begin error: ", p), err)
+ReadFieldBeginError:
+	return thrift.PrependError(fmt.Sprintf("%T read field %d begin error: ", p, fieldId), err)
+ReadFieldError:
+	return thrift.PrependError(fmt.Sprintf("%T read field %d '%s' error: ", p, fieldId, fieldIDToName_ArithmaticTestValidatorResult[fieldId]), err)
+SkipFieldError:
+	return thrift.PrependError(fmt.Sprintf("%T field %d skip type %d error: ", p, fieldId, fieldTypeId), err)
+
+ReadFieldEndError:
+	return thrift.PrependError(fmt.Sprintf("%T read field end error", p), err)
+ReadStructEndError:
+	return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
+}
+
+func (p *ArithmaticTestValidatorResult) ReadField0(iprot thrift.TProtocol) error {
+	p.Success = NewResponse()
+	if err := p.Success.Read(iprot); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (p *ArithmaticTestValidatorResult) Write(oprot thrift.TProtocol) (err error) {
+	var fieldId int16
+	if err = oprot.WriteStructBegin("TestValidator_result"); err != nil {
+		goto WriteStructBeginError
+	}
+	if p != nil {
+		if err = p.writeField0(oprot); err != nil {
+			fieldId = 0
+			goto WriteFieldError
+		}
+
+	}
+	if err = oprot.WriteFieldStop(); err != nil {
+		goto WriteFieldStopError
+	}
+	if err = oprot.WriteStructEnd(); err != nil {
+		goto WriteStructEndError
+	}
+	return nil
+WriteStructBeginError:
+	return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err)
+WriteFieldError:
+	return thrift.PrependError(fmt.Sprintf("%T write field %d error: ", p, fieldId), err)
+WriteFieldStopError:
+	return thrift.PrependError(fmt.Sprintf("%T write field stop error: ", p), err)
+WriteStructEndError:
+	return thrift.PrependError(fmt.Sprintf("%T write struct end error: ", p), err)
+}
+
+func (p *ArithmaticTestValidatorResult) writeField0(oprot thrift.TProtocol) (err error) {
+	if p.IsSetSuccess() {
+		if err = oprot.WriteFieldBegin("success", thrift.STRUCT, 0); err != nil {
+			goto WriteFieldBeginError
+		}
+		if err := p.Success.Write(oprot); err != nil {
+			return err
+		}
+		if err = oprot.WriteFieldEnd(); err != nil {
+			goto WriteFieldEndError
+		}
+	}
+	return nil
+WriteFieldBeginError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 0 begin error: ", p), err)
+WriteFieldEndError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 0 end error: ", p), err)
+}
+
+func (p *ArithmaticTestValidatorResult) String() string {
+	if p == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("ArithmaticTestValidatorResult(%+v)", *p)
+}
+
+func (p *ArithmaticTestValidatorResult) DeepEqual(ano *ArithmaticTestValidatorResult) bool {
+	if p == ano {
+		return true
+	} else if p == nil || ano == nil {
+		return false
+	}
+	if !p.Field0DeepEqual(ano.Success) {
+		return false
+	}
+	return true
+}
+
+func (p *ArithmaticTestValidatorResult) Field0DeepEqual(src *Response) bool {
 
 	if !p.Success.DeepEqual(src) {
 		return false
