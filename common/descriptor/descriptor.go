@@ -9,40 +9,20 @@ import (
 	"github.com/cloudwego/kitex/pkg/generic/descriptor"
 )
 
-var DescriptorManager DescsManager
-
 type DescsManager interface {
-	ValidateServiceAndMethodNameWithAnnotedRoutes(req *descriptor.HTTPRequest) (string, error)
-	ValidateServiceAndMethodName(serviceName, methodName string) error
+	GetMathchedRouterName(req *descriptor.HTTPRequest) (string, string, error)
 	GetFunctionDescriptor(serviceName, methodName string) (*descriptor.FunctionDescriptor, error)
 	GetServiceDescriptor(serviceName string) (*descriptor.ServiceDescriptor, error)
-	GetRouterForService(serviceName string) (descriptor.Router, error)
 }
 
-type descriptorsManagerImpl struct {
-	m map[string]*descriptorKeeper
-}
-
-func newDescriptorsManagerImpl() *descriptorsManagerImpl {
-	return &descriptorsManagerImpl{m: make(map[string]*descriptorKeeper)}
-}
-
-func (d *descriptorsManagerImpl) ValidateServiceAndMethodName(serviceName, methodName string) error {
-
-	manager, ok := d.m[serviceName]
-	if !ok {
-		return fmt.Errorf("service %s not found", serviceName)
-	}
-	return manager.validateMethodName(methodName)
-}
-
-func (d *descriptorsManagerImpl) ValidateServiceAndMethodNameWithAnnotedRoutes(req *descriptor.HTTPRequest) (string, error) {
+func (d *descriptorsManagerImpl) GetMathchedRouterName(req *descriptor.HTTPRequest) (string, string, error) {
+	// cache the path -> service/method?
 	for serviceName, manager := range d.m {
-		if manager.matchedRouter(req) {
-			return serviceName, nil
+		if methodname, match := manager.matchedRouter(req); match {
+			return serviceName, methodname, nil
 		}
 	}
-	return "", fmt.Errorf("service not found")
+	return "", "", fmt.Errorf("service not found")
 }
 
 func (d *descriptorsManagerImpl) GetFunctionDescriptor(serviceName, methodName string) (*descriptor.FunctionDescriptor, error) {
@@ -59,14 +39,6 @@ func (d *descriptorsManagerImpl) GetServiceDescriptor(serviceName string) (*desc
 		return nil, fmt.Errorf("service %s not found", serviceName)
 	}
 	return descriptorKeeper.get(), nil
-}
-
-func (d *descriptorsManagerImpl) GetRouterForService(serviceName string) (descriptor.Router, error) {
-	descriptorKeeper, ok := d.m[serviceName]
-	if !ok {
-		return nil, fmt.Errorf("service %s not found", serviceName)
-	}
-	return descriptorKeeper.get().Router, nil
 }
 
 func BuildDescriptorManager(relativePath string) error {
@@ -96,7 +68,12 @@ func BuildDescriptorManager(relativePath string) error {
 		descManager.m[serviceName] = d
 	}
 
-	DescriptorManager = descManager
+	for serviceName := range descManager.m {
+		router := descManager.routers[serviceName]
+		descManager.routers[serviceName] = router
+	}
+
+	descriptorManager = descManager
 
 	if flag {
 		return fmt.Errorf("error in building generic clients")
@@ -104,4 +81,23 @@ func BuildDescriptorManager(relativePath string) error {
 		hlog.Info("generic container built successfully")
 		return nil
 	}
+
+}
+
+func GetDescriptorManager() (DescsManager, error) {
+	if descriptorManager == nil {
+		return nil, fmt.Errorf("descriptor manager not built")
+	}
+	return descriptorManager, nil
+}
+
+var descriptorManager DescsManager
+
+type descriptorsManagerImpl struct {
+	m       map[string]*descriptorKeeper
+	routers map[string]descriptor.Router
+}
+
+func newDescriptorsManagerImpl() *descriptorsManagerImpl {
+	return &descriptorsManagerImpl{m: make(map[string]*descriptorKeeper), routers: make(map[string]descriptor.Router)}
 }

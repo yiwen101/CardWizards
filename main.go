@@ -3,18 +3,25 @@
 package main
 
 import (
+	"context"
+	"log"
+	"net/http"
+
+	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/app/server"
 	"github.com/yiwen101/CardWizards/common"
 	"github.com/yiwen101/CardWizards/common/descriptor"
+	"github.com/yiwen101/CardWizards/service"
 	clients "github.com/yiwen101/CardWizards/service/clients"
 )
 
+// interface; abstraction; object oriented; single duty, unit testing, configuration
 func main() {
 	// todo, set up logs and tracer?
 	// check proposal, feedbasktemplate, milestone2 sample and software engineering/design pattern books
 	// add two listeners and produce string information
-	clients.BuildGenericClients(common.RelativePathToIDLFromRoot)
-	descriptor.BuildDescriptorManager(common.RelativePathToIDLFromRoot)
+	clients.BuildGenericClients("./IDL")
+	descriptor.BuildDescriptorManager("./IDL")
 
 	h := server.Default(
 		server.WithHostPorts("127.0.0.1:8080"),
@@ -22,4 +29,69 @@ func main() {
 
 	register(h)
 	h.Spin()
+}
+
+func register(h *server.Hertz) {
+	// register routes
+	registerRoutes(h, generateDefaultToRegists())
+}
+
+type toRegist struct {
+	httpMethod string
+	path       string
+	handler    func(ctx context.Context, c *app.RequestContext)
+}
+
+func generateDefaultToRegists() []toRegist {
+	ls := make([]toRegist, 7)
+
+	methods := []string{http.MethodPost, http.MethodGet, http.MethodPut, http.MethodDelete, http.MethodPatch, http.MethodHead, http.MethodOptions}
+
+	for i, method := range methods {
+		handlerFunc := service.GenericHandlerFor(method)
+		tR := toRegist{
+			httpMethod: method,
+			path:       common.RefaultRoute,
+			handler:    handlerFunc,
+		}
+		ls[i] = tR
+	}
+
+	return ls
+	// todo
+	// complex feature: use the annotation of the thrift file
+	// intermediate feature: give route at command line
+}
+
+func registerRoutes(r *server.Hertz, tRs []toRegist) {
+
+	for _, tR := range tRs {
+		switch tR.httpMethod {
+		case http.MethodGet:
+			r.GET(tR.path, tR.handler)
+			continue
+		case http.MethodPost:
+			r.POST(tR.path, tR.handler)
+			continue
+		case http.MethodPut:
+			r.PUT(tR.path, tR.handler)
+			continue
+		case http.MethodDelete:
+			r.DELETE(tR.path, tR.handler)
+			continue
+		case http.MethodPatch:
+			r.PATCH(tR.path, tR.handler)
+			continue
+		case http.MethodHead:
+			r.HEAD(tR.path, tR.handler)
+			continue
+		case http.MethodOptions:
+			r.OPTIONS(tR.path, tR.handler)
+			continue
+		default:
+			log.Println(" unsupported http method, invalid route ")
+			continue
+		}
+	}
+	log.Println("routes and handlers registered to the server")
 }

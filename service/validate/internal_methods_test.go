@@ -4,13 +4,13 @@ import (
 	"testing"
 
 	"github.com/cloudwego/thriftgo/pkg/test"
-	"github.com/yiwen101/CardWizards/common"
 	"github.com/yiwen101/CardWizards/common/descriptor"
 )
 
-func TestValidateType(t *testing.T) {
-	descriptor.BuildDescriptorManager(common.RelativePathToIDLFromTest)
-	arithAddDescriptor, err := descriptor.DescriptorManager.GetFunctionDescriptor("arithmatic", "Add")
+func TestValidator(t *testing.T) {
+
+	dm, err := descriptor.GetDescriptorManager()
+	arithAddDescriptor, err := dm.GetFunctionDescriptor("arithmatic", "Add")
 	test.Assert(t, err == nil)
 
 	// test whether could validate simple struct like such:
@@ -55,26 +55,10 @@ func TestValidateType(t *testing.T) {
 		where type "Request" is the same as the one above
 	*/
 
-	finalTestDescriptor, err := descriptor.DescriptorManager.GetFunctionDescriptor("arithmatic", "TestValidator")
+	finalTestDescriptor, err := dm.GetFunctionDescriptor("arithmatic", "TestValidator")
 	test.Assert(t, err == nil)
 	finalTest := map[string]interface{}{"recur": goodJsonBody, "extra": map[string]string{"key": "value"}}
 	err = validateBody(finalTestDescriptor, finalTest)
 	test.Assert(t, err == nil)
 
-}
-
-func TestHelper(t *testing.T) {
-	descriptor.BuildDescriptorManager(common.RelativePathToIDLFromTest)
-	arithAddDescriptor, err := descriptor.DescriptorManager.GetFunctionDescriptor("arithmatic", "Add")
-	test.Assert(t, err == nil)
-	typeDescriptor := arithAddDescriptor.Request.Struct.FieldsByID[1].Type
-	str := typeDescriptor.Type.ToThriftTType().String()
-	test.Assert(t, str == "STRUCT")
-
-	goodJsonBody := map[string]interface{}{"firstArguement": 1, "secondArguement": 2}
-	one := goodJsonBody["firstArguement"]
-	_, ok := one.(int)
-	test.Assert(t, ok == true)
-	_, ok = one.(string)
-	test.Assert(t, ok == false)
 }

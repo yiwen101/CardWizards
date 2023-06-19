@@ -7,3 +7,5 @@ import (
 func client.Option GetLoadBalanceOption(serviceName string) {
 	return client.WithLoadBalancer(loadbalance.NewWeightedRoundRobinBalancer()),
 }
+// Option, customised routes? annotated routes?
+// must, absolute file path to the idl file

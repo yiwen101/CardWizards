@@ -7,14 +7,14 @@ import (
 	"github.com/cloudwego/hertz/pkg/common/hlog"
 	"github.com/cloudwego/kitex/pkg/generic"
 	"github.com/cloudwego/kitex/pkg/generic/descriptor"
-	"github.com/cloudwego/kitex/pkg/remote"
+	//"github.com/cloudwego/kitex/pkg/remote"
 )
 
 type descriptorKeeper struct {
 	serviceName string
 	svcDsc      atomic.Value
 	provider    generic.DescriptorProvider
-	codec       remote.PayloadCodec
+	//codec       remote.PayloadCodec
 }
 
 func newDescriptorKeeper(p generic.DescriptorProvider, name string) (*descriptorKeeper, error) {
@@ -48,13 +48,16 @@ func (d *descriptorKeeper) validateMethodName(methodName string) error {
 	return nil
 }
 
-func (d *descriptorKeeper) matchedRouter(req *descriptor.HTTPRequest) bool {
+func (d *descriptorKeeper) matchedRouter(req *descriptor.HTTPRequest) (string, bool) {
 	router := d.get().Router
 	if router == nil {
-		return false
+		return "", false
 	}
-	des, _ := router.Lookup(req)
-	return des != nil
+	des, err := router.Lookup(req)
+	if err == nil {
+		return des.Name, true
+	}
+	return "", false
 }
 
 func buildDescriptorKeeperFromPath(fileName, includeDir string) (*descriptorKeeper, error) {

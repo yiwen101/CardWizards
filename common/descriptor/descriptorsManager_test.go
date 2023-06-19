@@ -8,10 +8,13 @@ import (
 )
 
 func TestDescriptorsManager(t *testing.T) {
-	error := BuildDescriptorManager(common.RelativePathToIDLFromTest)
+	BuildDescriptorManager(common.RelativePathToIDLFromTest)
+	dm, error := GetDescriptorManager()
 	test.Assert(t, error == nil)
-	error = DescriptorManager.ValidateServiceAndMethodName("arithmatic", "Add")
+	_, error = dm.GetServiceDescriptor("arithmatic")
 	test.Assert(t, error == nil)
-	error = DescriptorManager.ValidateServiceAndMethodName("arithmatic", "fake")
+	_, error = dm.GetFunctionDescriptor("arithmatic", "fake")
 	test.Assert(t, error != nil)
+	_, error = dm.GetFunctionDescriptor("arithmatic", "Add")
+	test.Assert(t, error == nil)
 }

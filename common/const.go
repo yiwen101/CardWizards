@@ -4,9 +4,7 @@ package common
 
 const (
 	RelativePathToIDLFromTest = "../../IDL"
-	RelativePathToIDLFromRoot = "./IDL"
-
-	RefaultRoute = "/:serviceName/:methodName/*furtherRoutes"
+	RefaultRoute              = "/:serviceName/:methodName/*furtherRoutes"
 )
 
 /*

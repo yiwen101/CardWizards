@@ -1,14 +1,12 @@
 package service
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
 
 	"github.com/cloudwego/hertz/pkg/app"
-	"github.com/cloudwego/kitex/pkg/generic"
-	"github.com/cloudwego/kitex/pkg/generic/descriptor"
+	"github.com/yiwen101/CardWizards/router"
 	client "github.com/yiwen101/CardWizards/service/clients"
 	"github.com/yiwen101/CardWizards/service/validate"
 )
@@ -16,26 +14,22 @@ import (
 func GenericHandlerFor(method string) func(ctx context.Context, c *app.RequestContext) {
 	return func(ctx context.Context, c *app.RequestContext) {
 
-		serviceName := c.Param("serviceName")
-		methodName := c.Param("methodName")
-
-		req, err := buildRequest(c, method)
+		routeManager, err := router.GetRouteManager()
 		if err != nil {
-			c.String(http.StatusBadRequest, err.Error())
-		}
-
-		validator := validate.NewValidator()
-
-		serviceName, err = validator.ValidateRoute(serviceName, methodName, req)
-		if err != nil {
-			c.String(http.StatusBadRequest, err.Error())
+			c.String(http.StatusInternalServerError, "Internal Server Error in getting the route manager: "+err.Error())
 			return
 		}
 
+		serviceName, methodName, err := routeManager.ValidateRoute(c, method)
+		if err != nil {
+			c.String(http.StatusBadRequest, "invalid route"+err.Error())
+		}
+
+		validator := validate.NewValidator()
 		err = validator.ValidateBody(ctx, c)
 
 		if err != nil {
-			c.String(http.StatusBadRequest, err.Error())
+			c.String(http.StatusBadRequest, "invalid route: "+err.Error())
 			return
 		}
 
@@ -73,17 +67,3 @@ func GenericHandlerFor(method string) func(ctx context.Context, c *app.RequestCo
 }
 
 // is directly useful for httpGenericcall, but not for jsonGeneric call; nevertheless, is still needed for my validator to function
-
-func buildRequest(c *app.RequestContext, method string) (*descriptor.HTTPRequest, error) {
-	httpReq, err := http.NewRequest(method, c.Request.URI().String(), bytes.NewBuffer(c.Request.Body()))
-	if err != nil {
-		return nil, err
-	}
-
-	// 将http request转换成generic request
-	customReq, err := generic.FromHTTPRequest(httpReq)
-	if err != nil {
-		return nil, err
-	}
-	return customReq, nil
-}
