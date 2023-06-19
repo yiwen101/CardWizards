@@ -28,6 +28,9 @@ func (r *routeManagerImpl) ValidateRoute(c *app.RequestContext, httpMethod strin
 		return serviceName, methodName, nil
 	}
 	req, err := r.buildRequest(c, httpMethod)
+	if err != nil {
+		return "", "", err
+	}
 
 	return r.isAnnotatedRoute(req)
 }
