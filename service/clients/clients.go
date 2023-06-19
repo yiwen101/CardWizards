@@ -27,8 +27,10 @@ func buildGenericClientFromPath(fileName, includeDir string, opts ...client.Opti
 		hlog.Fatalf("new JSONThriftGeneric failed: %v", err)
 	}
 
+	serviceName := fileName[:len(fileName)-7]
+
 	client, err := genericclient.NewClient(
-		fileName,
+		serviceName,
 		g,
 		opts...,
 	)
