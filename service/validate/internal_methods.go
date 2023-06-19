@@ -4,15 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/kitex/pkg/generic/descriptor"
-   desc "github.com/yiwen101/CardWizards/service/descriptor"
+	desc "github.com/yiwen101/CardWizards/service/descriptor"
 )
 
 func validateType(t *descriptor.TypeDescriptor, json interface{}) error {
 
-	switch t.Elem.Type.ToThriftTType().String() {
+	switch t.Type.ToThriftTType().String() {
 	case "STRUCT":
 		json, ok := json.(map[string]interface{})
 		if !ok {
@@ -36,7 +37,7 @@ func validateType(t *descriptor.TypeDescriptor, json interface{}) error {
 			return fmt.Errorf("type mismatch, expected bool, got %T", json)
 		}
 	case "BYTE":
-		_, ok := json.(int8)
+		_, ok := json.(byte)
 		if ok {
 			return nil
 		} else {
@@ -50,21 +51,21 @@ func validateType(t *descriptor.TypeDescriptor, json interface{}) error {
 			return fmt.Errorf("type mismatch, expected double, got %T", json)
 		}
 	case "I16":
-		_, ok := json.(int16)
+		_, ok := json.(int)
 		if ok {
 			return nil
 		} else {
 			return fmt.Errorf("type mismatch, expected i16, got %T", json)
 		}
 	case "I32":
-		_, ok := json.(int32)
+		_, ok := json.(int)
 		if ok {
 			return nil
 		} else {
 			return fmt.Errorf("type mismatch, expected i32, got %T", json)
 		}
 	case "I64":
-		_, ok := json.(int64)
+		_, ok := json.(int)
 		if ok {
 			return nil
 		} else {
@@ -116,7 +117,7 @@ func validateName(p *descriptor.FieldDescriptor, json map[string]interface{}) er
 	return validateType(p.Type, v)
 }
 
-func validateBody(fuc *descriptor.FunctionDescriptor, json interface{}) error {
+func validateBody(fuc *descriptor.FunctionDescriptor, json map[string]interface{}) error {
 	params := fuc.Request.Struct.FieldsByID
 	if params[2] != nil {
 		// invalid number of fields, only parameter is request
@@ -135,19 +136,40 @@ func isAnnotatedRoute(req *descriptor.HTTPRequest) (string, error) {
 }
 
 func treatJsonBody(ctx context.Context, c *app.RequestContext) (map[string]interface{}, error) {
-	if string(c.ContentType()) != "application/json" {
-		return nil, fmt.Errorf("Invalid Content-Type, expected application/json")
-	}
+	/*
+		if string(c.ContentType()) != "application/json" {
+			return nil, fmt.Errorf("Invalid Content-Type, expected application/json")
+		} */
+	body := c.Request.BodyBuffer().Bytes()
 
-	body, err := c.Body()
-	if err != nil {
-		return nil, err
-	}
+	b, err := c.Body()
+	body2 := c.Request.BodyBytes()
+
+	log.Println("gateway here")
+	log.Println("c.Body() is:")
+	log.Println(b)
+	log.Println("c.ContentType is:")
+	log.Println(c.ContentType())
+	log.Println("c.Request.BodyBytes() is:")
+	log.Println(body2)
+	log.Println("c.Params")
+	log.Println(c.Params)
+	//log.Println("c.Request")
+	//log.Println(c.Request)
+	log.Println("c.Request.Body")
+	log.Println(c.Request.Body())
+	log.Println("string(c.Request.Body)")
+	log.Println(string(c.Request.Body()))
+	log.Println("c.Params")
+	log.Println(c.Params)
+	log.Printf("c.Keys")
+	log.Println(c.Keys)
 
 	var j map[string]interface{}
 
 	err = json.Unmarshal(body, &j)
 	if err != nil {
+		log.Println("error unmarshalling json body, here")
 		return nil, err
 	}
 	return j, nil
