@@ -15,6 +15,8 @@ type DescriptorsManager interface {
 	ValidateServiceAndMethodNameWithAnnotedRoutes(req *descriptor.HTTPRequest) (string, error)
 	ValidateServiceAndMethodName(serviceName, methodName string) error
 	GetFunctionDescriptor(serviceName, methodName string) (*descriptor.FunctionDescriptor, error)
+	GetServiceDescriptor(serviceName string) (*descriptor.ServiceDescriptor, error)
+	GetRouterForService(serviceName string) (descriptor.Router, error)
 }
 
 type descriptorsManagerImpl struct {
@@ -49,6 +51,22 @@ func (d *descriptorsManagerImpl) GetFunctionDescriptor(serviceName, methodName s
 		return nil, fmt.Errorf("service %s not found", serviceName)
 	}
 	return manager.get().LookupFunctionByMethod(methodName)
+}
+
+func (d *descriptorsManagerImpl) GetServiceDescriptor(serviceName string) (*descriptor.ServiceDescriptor, error) {
+	descriptorKeeper, ok := d.m[serviceName]
+	if !ok {
+		return nil, fmt.Errorf("service %s not found", serviceName)
+	}
+	return descriptorKeeper.get(), nil
+}
+
+func (d *descriptorsManagerImpl) GetRouterForService(serviceName string) (descriptor.Router, error) {
+	descriptorKeeper, ok := d.m[serviceName]
+	if !ok {
+		return nil, fmt.Errorf("service %s not found", serviceName)
+	}
+	return descriptorKeeper.get().Router, nil
 }
 
 func BuildDescriptorManager(relativePath string) error {
@@ -87,5 +105,3 @@ func BuildDescriptorManager(relativePath string) error {
 		return nil
 	}
 }
-
-
