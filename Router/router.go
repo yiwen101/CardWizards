@@ -15,6 +15,8 @@ type RouteManager interface {
 	RegisterRoutes(r *server.Hertz)
 }
 
+var _ RouteManager = (*routeManagerImpl)(nil)
+
 type routeManagerImpl struct {
 	routes []route
 }

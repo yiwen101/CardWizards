@@ -5,12 +5,12 @@ import (
 
 	"github.com/cloudwego/thriftgo/pkg/test"
 	"github.com/yiwen101/CardWizards/common"
-	"github.com/yiwen101/CardWizards/service/descriptor"
+	"github.com/yiwen101/CardWizards/common/descriptor"
 )
 
 func TestValidateType(t *testing.T) {
 	descriptor.BuildDescriptorManager(common.RelativePathToIDLFromTest)
-	arithAddDescriptor, err := descriptor.DescsManager.GetFunctionDescriptor("arithmatic", "Add")
+	arithAddDescriptor, err := descriptor.DescriptorManager.GetFunctionDescriptor("arithmatic", "Add")
 	test.Assert(t, err == nil)
 
 	// test whether could validate simple struct like such:
@@ -55,7 +55,7 @@ func TestValidateType(t *testing.T) {
 		where type "Request" is the same as the one above
 	*/
 
-	finalTestDescriptor, err := descriptor.DescsManager.GetFunctionDescriptor("arithmatic", "TestValidator")
+	finalTestDescriptor, err := descriptor.DescriptorManager.GetFunctionDescriptor("arithmatic", "TestValidator")
 	test.Assert(t, err == nil)
 	finalTest := map[string]interface{}{"recur": goodJsonBody, "extra": map[string]string{"key": "value"}}
 	err = validateBody(finalTestDescriptor, finalTest)
@@ -65,7 +65,7 @@ func TestValidateType(t *testing.T) {
 
 func TestHelper(t *testing.T) {
 	descriptor.BuildDescriptorManager(common.RelativePathToIDLFromTest)
-	arithAddDescriptor, err := descriptor.DescsManager.GetFunctionDescriptor("arithmatic", "Add")
+	arithAddDescriptor, err := descriptor.DescriptorManager.GetFunctionDescriptor("arithmatic", "Add")
 	test.Assert(t, err == nil)
 	typeDescriptor := arithAddDescriptor.Request.Struct.FieldsByID[1].Type
 	str := typeDescriptor.Type.ToThriftTType().String()

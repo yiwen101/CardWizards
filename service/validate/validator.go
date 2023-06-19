@@ -5,7 +5,7 @@ import (
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/kitex/pkg/generic/descriptor"
-	desc "github.com/yiwen101/CardWizards/service/descriptor"
+	desc "github.com/yiwen101/CardWizards/common/descriptor"
 )
 
 type Validator interface {
@@ -25,7 +25,6 @@ func (v *validatorImplement) ValidateRoute(serviceName, methodName string, req *
 		return serviceName, err
 	}
 	return isAnnotatedRoute(req)
-	//c.String(http.StatusBadRequest, fmt.Sprintf("Invalid route, error message is: %s", err))
 }
 
 func (v *validatorImplement) ValidateBody(ctx context.Context, c *app.RequestContext) error {
@@ -36,7 +35,7 @@ func (v *validatorImplement) ValidateBody(ctx context.Context, c *app.RequestCon
 	}
 
 	serviceName, methodName := c.Param("serviceName"), c.Param("methodName")
-	desc, err := desc.DescsManager.GetFunctionDescriptor(serviceName, methodName)
+	desc, err := desc.DescriptorManager.GetFunctionDescriptor(serviceName, methodName)
 	if err != nil {
 		//c.String(http.StatusInternalServerError, fmt.Sprintf("Internal Server Error in getting the function descriptor, error message is: %s", err))
 		return err

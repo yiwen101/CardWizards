@@ -8,7 +8,7 @@ import (
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/kitex/pkg/generic/descriptor"
-	desc "github.com/yiwen101/CardWizards/service/descriptor"
+	desc "github.com/yiwen101/CardWizards/common/descriptor"
 )
 
 func validateType(t *descriptor.TypeDescriptor, json interface{}, fieldName string) error {
@@ -129,11 +129,11 @@ func validateBody(fuc *descriptor.FunctionDescriptor, json map[string]interface{
 }
 
 func isGenericRoute(serviceName, methodName string) error {
-	return desc.DescsManager.ValidateServiceAndMethodName(serviceName, methodName)
+	return desc.DescriptorManager.ValidateServiceAndMethodName(serviceName, methodName)
 }
 
 func isAnnotatedRoute(req *descriptor.HTTPRequest) (string, error) {
-	return desc.DescsManager.ValidateServiceAndMethodNameWithAnnotedRoutes(req)
+	return desc.DescriptorManager.ValidateServiceAndMethodNameWithAnnotedRoutes(req)
 }
 
 func treatJsonBody(ctx context.Context, c *app.RequestContext) (map[string]interface{}, error) {

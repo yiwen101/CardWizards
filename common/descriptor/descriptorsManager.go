@@ -9,9 +9,9 @@ import (
 	"github.com/cloudwego/kitex/pkg/generic/descriptor"
 )
 
-var DescsManager DescriptorsManager
+var DescriptorManager DescsManager
 
-type DescriptorsManager interface {
+type DescsManager interface {
 	ValidateServiceAndMethodNameWithAnnotedRoutes(req *descriptor.HTTPRequest) (string, error)
 	ValidateServiceAndMethodName(serviceName, methodName string) error
 	GetFunctionDescriptor(serviceName, methodName string) (*descriptor.FunctionDescriptor, error)
@@ -96,7 +96,7 @@ func BuildDescriptorManager(relativePath string) error {
 		descManager.m[serviceName] = d
 	}
 
-	DescsManager = descManager
+	DescriptorManager = descManager
 
 	if flag {
 		return fmt.Errorf("error in building generic clients")

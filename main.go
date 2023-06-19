@@ -5,12 +5,13 @@ package main
 import (
 	"github.com/cloudwego/hertz/pkg/app/server"
 	"github.com/yiwen101/CardWizards/common"
+	"github.com/yiwen101/CardWizards/common/descriptor"
 	clients "github.com/yiwen101/CardWizards/service/clients"
-	"github.com/yiwen101/CardWizards/service/descriptor"
 )
 
 func main() {
 	// todo, set up logs and tracer?
+	// check proposal, feedbasktemplate, milestone2 sample and software engineering/design pattern books
 	// add two listeners and produce string information
 	clients.BuildGenericClients(common.RelativePathToIDLFromRoot)
 	descriptor.BuildDescriptorManager(common.RelativePathToIDLFromRoot)
