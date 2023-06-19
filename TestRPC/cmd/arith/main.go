@@ -5,11 +5,13 @@ import (
 
 	"log"
 
+	"github.com/cloudwego/kitex/pkg/generic"
 	"github.com/cloudwego/kitex/pkg/rpcinfo"
 	"github.com/cloudwego/kitex/server"
+	"github.com/cloudwego/kitex/server/genericserver"
 	"github.com/kitex-contrib/registry-nacos/registry"
 	arithmatic "github.com/yiwen101/CardWizards/TestRPC/kitex_gen/arithmatic"
-	calculator "github.com/yiwen101/CardWizards/TestRPC/kitex_gen/arithmatic/arithmatic"
+	//calculator "github.com/yiwen101/CardWizards/TestRPC/kitex_gen/arithmatic/arithmatic"
 )
 
 // CalculatorImpl implements the last service interface defined in the IDL.
@@ -44,20 +46,49 @@ func (s *CalculatorImpl) TestValidator(ctx context.Context, request *arithmatic.
 	return &arithmatic.Response{FirstArguement: 17, SecondArguement: 17, Result_: 17}, nil
 }
 
+type GenericServiceImpl struct {
+}
+
+func (g *GenericServiceImpl) GenericCall(ctx context.Context, method string, request interface{}) (response interface{}, err error) {
+	// use jsoniter or other json parse sdk to assert request
+	return "{\"SecondArguement\":7,\"result\":17,\"firstArguement\":10}", nil
+
+}
+
 func main() {
+
+	p, err := generic.NewThriftFileProvider("arithmatic.thrift", "../../../IDL")
+	if err != nil {
+		panic(err)
+	}
+
+	g, err := generic.JSONThriftGeneric(p)
+	if err != nil {
+		panic(err)
+	}
 
 	r, err := registry.NewDefaultNacosRegistry()
 	if err != nil {
 		panic(err)
 	}
 
-	svr := calculator.NewServer(
-		new(CalculatorImpl),
+	svc := genericserver.NewServer(
+		new(GenericServiceImpl),
+		g,
 		server.WithServerBasicInfo(&rpcinfo.EndpointBasicInfo{ServiceName: "arithmatic"}),
-		server.WithRegistry(r),
-	)
+		server.WithRegistry(r))
+	if err != nil {
+		panic(err)
+	}
 
-	err = svr.Run()
+	/*
+		svr := calculator.NewServer(
+			new(CalculatorImpl),
+
+		)
+	*/
+
+	err = svc.Run()
 
 	if err != nil {
 		log.Println(err.Error())
