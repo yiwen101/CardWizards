@@ -24,8 +24,11 @@ func TestValidateType(t *testing.T) {
 
 	  Response Add(1: Request request ) ( api.get = "/arith/add" )
 	*/
+	// all number decoded from json are treated as float64
+	var arg1 float64 = 1
+	var arg2 float64 = 2
 
-	goodJsonBody := map[string]interface{}{"firstArguement": 1, "secondArguement": 2}
+	goodJsonBody := map[string]interface{}{"firstArguement": arg1, "secondArguement": arg2}
 
 	err = validateBody(arithAddDescriptor, goodJsonBody)
 	test.Assert(t, err == nil)
@@ -35,7 +38,7 @@ func TestValidateType(t *testing.T) {
 	test.Assert(t, err != nil)
 
 	//missing arguements
-	badJsonBody2 := map[string]interface{}{"firstArguement": 1}
+	badJsonBody2 := map[string]interface{}{"firstArguement": arg1}
 	err = validateBody(arithAddDescriptor, badJsonBody2)
 	test.Assert(t, err != nil)
 
