@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"log"
 	"net/http"
 
 	"github.com/cloudwego/hertz/pkg/app"
@@ -63,14 +62,13 @@ func GenericHandlerFor(method string) func(ctx context.Context, c *app.RequestCo
 			return
 		}
 
-		log.Println(genericResponse)
 		resp, ok := genericResponse.(string)
 		if !ok {
 			c.String(http.StatusInternalServerError, "Internal Server Error in converting the generic response: "+err.Error())
 			return
 		}
 
-		c.String(200, resp)
+		c.JSON(200, resp)
 	}
 }
 
