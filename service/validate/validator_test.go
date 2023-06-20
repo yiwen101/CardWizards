@@ -7,7 +7,8 @@ import (
 	"github.com/yiwen101/CardWizards/common/descriptor"
 )
 
-func TestValidator(t *testing.T) {
+/* tested: validateBody, NewValidatorFor */
+func TestValidateBody(t *testing.T) {
 	descriptor.BuildDescriptorManager("../../IDL")
 	dm, err := descriptor.GetDescriptorManager()
 	test.Assert(t, err == nil)
@@ -62,4 +63,12 @@ func TestValidator(t *testing.T) {
 	err = validateBody(finalTestDescriptor, finalTest)
 	test.Assert(t, err == nil)
 
+}
+
+func TestNewValidatorFor(t *testing.T) {
+	descriptor.BuildDescriptorManager("../../IDL")
+	_, err := NewValidatorFor("arithmatic", "Add")
+	test.Assert(t, err == nil)
+	_, err = NewValidatorFor("arithmatic", "Add2")
+	test.Assert(t, err != nil)
 }

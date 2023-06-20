@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/cloudwego/hertz/pkg/common/hlog"
 	"github.com/cloudwego/kitex/client"
 	"github.com/cloudwego/kitex/client/genericclient"
 	"github.com/cloudwego/kitex/pkg/generic"
@@ -39,16 +38,16 @@ func BuildGenericClients(relativePath string) error {
 	serviceToClientMapTemp := make(map[string]genericclient.Client)
 	thiriftFiles, err := os.ReadDir(relativePath)
 	if err != nil {
-		hlog.Fatal("failure reading thrrift files at IDL directory: %v", err)
+		return err
 	}
 
 	for _, file := range thiriftFiles {
 		if file.IsDir() {
-			hlog.Fatal("failure reading thrrift files at IDL directory as it contains directory")
+			return fmt.Errorf("failure reading thrrift files at IDL directory as it contains directory")
 		}
 
 		if file.Name()[len(file.Name())-7:] != ".thrift" {
-			hlog.Fatal("failure reading thrrift files at IDL directory as it contains non-thrift file %s", file.Name())
+			return fmt.Errorf("failure reading thrrift files at IDL directory as it contains non-thrift file %s", file.Name())
 		}
 
 		// Get service name by deleting ".thrift" from the end of the file name
@@ -57,16 +56,21 @@ func BuildGenericClients(relativePath string) error {
 			return err
 		}
 
+		registryOption, err := getServiceRegistryOption(serviceName)
+		if err != nil {
+			return err
+		}
+
 		client, err := buildGenericClientFromPath(
 			serviceName,
 			file.Name(),
 			relativePath,
-			getServiceRegistryOption(serviceName),
+			registryOption,
 			getServiceLoadBalancerOption(serviceName),
 		)
 
 		if err != nil {
-			hlog.Fatal("error in building generic client for service %s: %v", serviceName, err)
+			return err
 		}
 		serviceToClientMapTemp[serviceName] = client
 	}
@@ -82,12 +86,12 @@ func buildGenericClientFromPath(serviceName, fileName, includeDir string, opts .
 
 	p, err := generic.NewThriftFileProvider(fileName, includeDir)
 	if err != nil {
-		hlog.Fatalf("new thrift provider failed: %v", err)
+		return nil, err
 	}
 
 	g, err := generic.JSONThriftGeneric(p)
 	if err != nil {
-		hlog.Fatalf("new JSONThriftGeneric failed: %v", err)
+		return nil, err
 	}
 
 	client, err := genericclient.NewClient(
@@ -96,19 +100,19 @@ func buildGenericClientFromPath(serviceName, fileName, includeDir string, opts .
 		opts...,
 	)
 	if err != nil {
-		hlog.Fatal("error in building generic client for service %s: %v", fileName, err)
+		return nil, err
 	}
 
 	return client, err
 }
 
-func getServiceRegistryOption(serviceName string) client.Option {
+func getServiceRegistryOption(serviceName string) (client.Option, error) {
 	nacosResolver, err := resolver.NewDefaultNacosResolver()
 	if err != nil {
-		hlog.Fatalf("err in building nacos resolver, please check your nacos server is on:%v", err)
+		return client.Option{}, err
 	}
 
-	return client.WithResolver(nacosResolver)
+	return client.WithResolver(nacosResolver), nil
 }
 
 func getServiceLoadBalancerOption(serviceName string) client.Option {

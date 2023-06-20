@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"github.com/cloudwego/hertz/pkg/app"
-	"github.com/cloudwego/hertz/pkg/common/hlog"
 	"github.com/yiwen101/CardWizards/router"
 	client "github.com/yiwen101/CardWizards/service/clients"
 	"github.com/yiwen101/CardWizards/service/validate"
@@ -26,7 +25,6 @@ func GetHandlerManager() (HandlerManager, error) {
 func (hm *handlerManagerImpl) HandlerForAnnotatedRoutes(httpMethod string) (func(ctx context.Context, c *app.RequestContext), error) {
 	routeManager, err := router.GetRouteManager()
 	if err != nil {
-		hlog.Fatal("Internal Server Error in getting the route manager: ", err)
 		return nil, err
 	}
 
@@ -60,13 +58,12 @@ func (hm *handlerManagerImpl) HandlerForRoute(serviceName, methodName string) (f
 
 	cli, err := client.GetGenericClientforService(serviceName)
 	if err != nil {
-		hlog.Fatal("Internal Server Error in getting the client: ", err)
 		return nil, err
 	}
 
 	validator, err := validate.NewValidatorFor(serviceName, methodName)
 	if err != nil {
-		hlog.Fatal("Internal Server Error in getting the validator: ", err)
+		return nil, err
 	}
 
 	return func(ctx context.Context, c *app.RequestContext) {

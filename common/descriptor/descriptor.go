@@ -22,36 +22,30 @@ func BuildDescriptorManager(relativePath string) error {
 	descManager := newDescriptorsManagerImpl()
 	thiriftFiles, err := os.ReadDir(relativePath)
 	if err != nil {
-		hlog.Fatal("failure reading thrift files at IDL directory: %v", err)
+		return err
 	}
-	flag := false
 
 	for _, file := range thiriftFiles {
 		log.Printf("reading file : %s", file.Name())
 		if file.IsDir() {
-			hlog.Fatal("failure reading thrrift files at IDL directory as it contains directory")
+			return fmt.Errorf("failure reading thrrift files at IDL directory as it contains directory")
 		}
 
 		if file.Name()[len(file.Name())-7:] != ".thrift" {
-			hlog.Fatal("failure reading thrrift files at IDL directory as it contains non-thrift file %s", file.Name())
+			return fmt.Errorf("failure reading thrrift files at IDL directory as it contains non-thrift file %s", file.Name())
 		}
 
 		d, err := buildDescriptorKeeperFromPath(file.Name(), relativePath)
 		if err != nil {
-			flag = true
-			hlog.Fatal("error in building descriptor for service %s: %v", file.Name(), err)
+			return fmt.Errorf("error in building descriptor for service %s: %v", file.Name(), err)
 		}
 		descManager.m[file.Name()] = d
 	}
 
 	descriptorManager = descManager
 
-	if flag {
-		return fmt.Errorf("error in building generic clients")
-	} else {
-		hlog.Info("generic container built successfully")
-		return nil
-	}
+	hlog.Info("generic container built successfully")
+	return nil
 
 }
 
@@ -67,7 +61,13 @@ func (d *descriptorsManagerImpl) GetServiceName(filename string) (string, error)
 	if !ok {
 		return "", fmt.Errorf("fileName %s not found", filename)
 	}
-	return keeper.get().Name, nil
+
+	funcDesc, err := keeper.get()
+	if err != nil {
+		return "", err
+	}
+
+	return funcDesc.Name, nil
 }
 
 func (d *descriptorsManagerImpl) GetRouters() map[string]descriptor.Router {
@@ -94,7 +94,7 @@ func (d *descriptorsManagerImpl) GetServiceDescriptor(serviceName string) (*desc
 	if !ok {
 		return nil, fmt.Errorf("service %s not found", serviceName)
 	}
-	return descriptorKeeper.get(), nil
+	return descriptorKeeper.get()
 }
 
 func (d *descriptorsManagerImpl) GetAllServiceNames() ([]string, error) {

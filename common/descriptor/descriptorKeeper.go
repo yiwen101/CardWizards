@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"sync/atomic"
 
-	"github.com/cloudwego/hertz/pkg/common/hlog"
 	"github.com/cloudwego/kitex/pkg/generic"
 	"github.com/cloudwego/kitex/pkg/generic/descriptor"
 	//"github.com/cloudwego/kitex/pkg/remote"
@@ -33,15 +32,19 @@ func (d *descriptorKeeper) update() {
 		d.svcDsc.Store(svc)
 	}
 }
-func (d *descriptorKeeper) get() *descriptor.ServiceDescriptor {
+func (d *descriptorKeeper) get() (*descriptor.ServiceDescriptor, error) {
 	svcDsc, ok := d.svcDsc.Load().(*descriptor.ServiceDescriptor)
 	if !ok {
-		hlog.Fatalf("invalid service descriptor")
+		return nil, fmt.Errorf("invalid service descriptor for %s", d.fileName)
 	}
-	return svcDsc
+	return svcDsc, nil
 }
 func (d *descriptorKeeper) validateMethodName(methodName string) error {
-	_, err := d.get().LookupFunctionByMethod(methodName)
+	sd, err := d.get()
+	if err != nil {
+		return err
+	}
+	_, err = sd.LookupFunctionByMethod(methodName)
 	if err != nil {
 		return fmt.Errorf("method %s not found", methodName)
 	}
@@ -52,11 +55,11 @@ func buildDescriptorKeeperFromPath(fileName, includeDir string) (*descriptorKeep
 
 	p, err := generic.NewThriftFileProvider(fileName, includeDir)
 	if err != nil {
-		hlog.Fatalf("new thrift provider failed: %v", err)
+		return nil, err
 	}
 	descriptor, err := newDescriptorKeeper(p, fileName)
 	if err != nil {
-		hlog.Fatalf("new descriptor keeper failed: %v", err)
+		return nil, err
 	}
 	return descriptor, err
 }

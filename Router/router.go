@@ -8,7 +8,7 @@ import (
 // router is responsible for finding the corresponding service and method according to the request path.
 type RouteManager interface {
 	ValidateRoute(c *app.RequestContext, httpMethod string) (string, string, error)
-	GetRoutes() ([]Route, error)
+	BuildAndGetRoute() ([]Route, error)
 }
 
 func GetRouteManager() (RouteManager, error) {
@@ -38,7 +38,7 @@ func (r *routeManagerImpl) ValidateRoute(c *app.RequestContext, httpMethod strin
 	return r.isAnnotatedRoute(req)
 }
 
-func (r *routeManagerImpl) GetRoutes() ([]Route, error) {
+func (r *routeManagerImpl) BuildAndGetRoute() ([]Route, error) {
 	if routes != nil {
 		return routes, nil
 	}

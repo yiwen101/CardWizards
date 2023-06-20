@@ -101,7 +101,7 @@ func generateRegularToRegists() ([]toRegist, error) {
 		hlog.Fatal("Internal Server Error in getting the route manager: ", err)
 	}
 
-	routes, err := rm.GetRoutes()
+	routes, err := rm.BuildAndGetRoute()
 	if err != nil {
 		hlog.Fatal("Internal Server Error in getting the routes: ", err)
 	}

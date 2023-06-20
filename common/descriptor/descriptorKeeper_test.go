@@ -13,7 +13,8 @@ func TestDescriptorKeeper(t *testing.T) {
 	d, err := buildDescriptorKeeperFromPath(filename, includeDir)
 	test.Assert(t, err == nil)
 
-	des := d.get()
+	des, err := d.get()
+	test.Assert(t, err == nil)
 	test.Assert(t, des != nil)
 
 	err = d.validateMethodName("BizMethod1")

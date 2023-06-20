@@ -10,6 +10,7 @@ import (
 	"github.com/yiwen101/CardWizards/service/clients"
 )
 
+/* tested: cache's get, save, HandlerForAnnotatedRoutes, HandlerForRoute, GetHandlerManager */
 func TestHandlerCache(t *testing.T) {
 	h := handlerCache{}
 	f, ok := h.get("test", "test")
@@ -36,9 +37,7 @@ func TestHandlerManager(t *testing.T) {
 	f, err = hm.HandlerForRoute("arithmatic", "Add")
 	test.Assert(t, err == nil)
 	test.Assert(t, f != nil)
-	/*  this leads to hlog.Fatal
 	f, err = hm.HandlerForRoute("fake", "fake")
 	test.Assert(t, err != nil)
 	test.Assert(t, f == nil)
-	*/
 }

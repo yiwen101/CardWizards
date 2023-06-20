@@ -20,12 +20,18 @@ type descriptorsManagerImpl struct {
 func newDescriptorsManagerImpl() *descriptorsManagerImpl {
 	return &descriptorsManagerImpl{m: make(map[string]*descriptorKeeper)}
 }
-func (d *descriptorsManagerImpl) buildServiceMap() {
+func (d *descriptorsManagerImpl) buildServiceMap() error {
 	d.serivceMap = make(map[string]string)
 	for fileName, manager := range d.m {
-		d.serivceMap[manager.get().Name] = fileName
+		funcDes, err := manager.get()
+		if err != nil {
+			return err
+		}
+		d.serivceMap[funcDes.Name] = fileName
 	}
+	return nil
 }
+
 func (d *descriptorsManagerImpl) getFileName(serviceName string) (string, error) {
 	if d.serivceMap == nil {
 		d.buildServiceMap()
@@ -45,7 +51,12 @@ func (d *descriptorsManagerImpl) buildRouters() error {
 		if err != nil {
 			return err
 		}
-		d.routers[serviceName] = descriptorKeeper.get().Router
+
+		funcDesc, err := descriptorKeeper.get()
+		if err != nil {
+			return err
+		}
+		d.routers[serviceName] = funcDesc.Router
 	}
 	return nil
 }
