@@ -48,18 +48,6 @@ func (d *descriptorKeeper) validateMethodName(methodName string) error {
 	return nil
 }
 
-func (d *descriptorKeeper) matchedRouter(req *descriptor.HTTPRequest) (string, bool) {
-	router := d.get().Router
-	if router == nil {
-		return "", false
-	}
-	des, err := router.Lookup(req)
-	if err == nil {
-		return des.Name, true
-	}
-	return "", false
-}
-
 func buildDescriptorKeeperFromPath(fileName, includeDir string) (*descriptorKeeper, error) {
 
 	p, err := generic.NewThriftFileProvider(fileName, includeDir)

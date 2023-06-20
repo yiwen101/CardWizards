@@ -10,7 +10,10 @@ import (
 	"github.com/cloudwego/kitex/pkg/generic"
 	"github.com/cloudwego/kitex/pkg/loadbalance"
 	"github.com/kitex-contrib/registry-nacos/resolver"
+	desc "github.com/yiwen101/CardWizards/common/descriptor"
 )
+
+var dm desc.DescsManager
 
 func GetGenericClientforService(serviceName string) (genericclient.Client, error) {
 	if client, ok := serviceToClientMap[serviceName]; ok {
@@ -25,13 +28,19 @@ func BuildGenericClients(relativePath string) error {
 		return nil
 	}
 
+	if dm == nil {
+		dmTemp, err := desc.GetDescriptorManager()
+		if err != nil {
+			return err
+		}
+		dm = dmTemp
+	}
+
 	serviceToClientMapTemp := make(map[string]genericclient.Client)
 	thiriftFiles, err := os.ReadDir(relativePath)
 	if err != nil {
 		hlog.Fatal("failure reading thrrift files at IDL directory: %v", err)
 	}
-
-	flag := false
 
 	for _, file := range thiriftFiles {
 		if file.IsDir() {
@@ -43,9 +52,13 @@ func BuildGenericClients(relativePath string) error {
 		}
 
 		// Get service name by deleting ".thrift" from the end of the file name
-		serviceName := file.Name()[:len(file.Name())-7]
+		serviceName, err := dm.GetServiceName(file.Name())
+		if err != nil {
+			return err
+		}
 
 		client, err := buildGenericClientFromPath(
+			serviceName,
 			file.Name(),
 			relativePath,
 			getServiceRegistryOption(serviceName),
@@ -53,7 +66,6 @@ func BuildGenericClients(relativePath string) error {
 		)
 
 		if err != nil {
-			flag = true
 			hlog.Fatal("error in building generic client for service %s: %v", serviceName, err)
 		}
 		serviceToClientMapTemp[serviceName] = client
@@ -61,18 +73,12 @@ func BuildGenericClients(relativePath string) error {
 
 	serviceToClientMap = serviceToClientMapTemp
 
-	if flag {
-		return fmt.Errorf("error in building generic clients")
-	} else {
-		hlog.Info("generic clients built successfully")
-		return nil
-	}
+	return nil
 }
 
 var serviceToClientMap map[string]genericclient.Client
 
-func buildGenericClientFromPath(fileName, includeDir string, opts ...client.Option) (genericclient.Client, error) {
-	//serviceToClientMap = make(map[string]genericclient.Client)
+func buildGenericClientFromPath(serviceName, fileName, includeDir string, opts ...client.Option) (genericclient.Client, error) {
 
 	p, err := generic.NewThriftFileProvider(fileName, includeDir)
 	if err != nil {
@@ -83,8 +89,6 @@ func buildGenericClientFromPath(fileName, includeDir string, opts ...client.Opti
 	if err != nil {
 		hlog.Fatalf("new JSONThriftGeneric failed: %v", err)
 	}
-
-	serviceName := fileName[:len(fileName)-7]
 
 	client, err := genericclient.NewClient(
 		serviceName,

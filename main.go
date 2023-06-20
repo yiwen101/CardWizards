@@ -20,8 +20,8 @@ func main() {
 	// todo, set up logs and tracer?
 	// check proposal, feedbasktemplate, milestone2 sample and software engineering/design pattern books
 	// add two listeners and produce string information
-	clients.BuildGenericClients("./IDL")
 	descriptor.BuildDescriptorManager("./IDL")
+	clients.BuildGenericClients("./IDL")
 
 	h := server.Default(
 		server.WithHostPorts("127.0.0.1:8080"),

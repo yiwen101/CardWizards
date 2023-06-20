@@ -21,8 +21,62 @@ func (r *routeManagerImpl) isGenericRoute(serviceName, methodName string) error 
 	return err
 }
 
+/*func (d *descriptorsManagerImpl) GetMathchedRouterName(req *descriptor.HTTPRequest) (string, string, error) {
+	if d.routers == nil {
+		d.buildRouters()
+	}
+	// cache the path -> service/method?
+	for serviceName, manager := range d.m {
+		if methodname, match := manager.matchedRouter(req); match {
+			return serviceName, methodname, nil
+		}
+	}
+	return "", "", fmt.Errorf("service not found")
+
+}*/
+
 func (r *routeManagerImpl) isAnnotatedRoute(req *descriptor.HTTPRequest) (string, string, error) {
-	return r.dm.GetMathchedRouterName(req)
+	if r.routers == nil {
+		r.routers = r.dm.GetRouters()
+	}
+
+	serviceName, methodName, err := r.findInCache(req)
+	if err == nil {
+		return serviceName, methodName, nil
+	}
+
+	for serviceName, router := range r.routers {
+		des, err := router.Lookup(req)
+		if err == nil {
+			r.saveInCache(req.Method, req.Path, serviceName, des.Name)
+			return serviceName, des.Name, nil
+		}
+	}
+
+	return "", "", fmt.Errorf("service not found")
+}
+
+func (r *routeManagerImpl) findInCache(req *descriptor.HTTPRequest) (string, string, error) {
+	httpMehtod, path := req.Method, req.Path
+	m, ok := r.cache[httpMehtod]
+	if ok {
+		if pair, ok := m[path]; ok {
+			return pair.serviceName, pair.methodName, nil
+		}
+	}
+	return "", "", fmt.Errorf("service not found in cache")
+}
+
+func (r *routeManagerImpl) saveInCache(httpMehtod, path, serviceName, methodName string) {
+	if r.cache == nil {
+		r.cache = make(map[string]map[string]routePair)
+	}
+	m, ok := r.cache[httpMehtod]
+	if !ok {
+		m = make(map[string]routePair)
+		r.cache[httpMehtod] = m
+	}
+	m[path] = routePair{serviceName: serviceName, methodName: methodName}
 }
 
 func (r *routeManagerImpl) buildRequest(c *app.RequestContext, method string) (*descriptor.HTTPRequest, error) {
@@ -50,5 +104,12 @@ func newRouteManagerImpl() (RouteManager, error) {
 var routeManager RouteManager
 
 type routeManagerImpl struct {
-	dm desc.DescsManager
+	dm      desc.DescsManager
+	cache   map[string]map[string]routePair
+	routers map[string]descriptor.Router
+}
+
+type routePair struct {
+	serviceName string
+	methodName  string
 }

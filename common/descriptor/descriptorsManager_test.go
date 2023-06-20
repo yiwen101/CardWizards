@@ -30,5 +30,9 @@ func TestNilRouter(t *testing.T) {
 	test.Assert(t, serviceName == "arithmatic")
 	funcs := service.Functions
 	test.Assert(t, len(funcs) == 5)
+	for _, f := range funcs {
+		str := f.Name
+		test.Assert(t, str != "")
+	}
 
 }

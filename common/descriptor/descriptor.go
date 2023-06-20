@@ -10,29 +10,25 @@ import (
 )
 
 type DescsManager interface {
-	GetMathchedRouterName(req *descriptor.HTTPRequest) (string, string, error)
 	GetFunctionDescriptor(serviceName, methodName string) (*descriptor.FunctionDescriptor, error)
 	GetServiceDescriptor(serviceName string) (*descriptor.ServiceDescriptor, error)
+	GetServiceName(filename string) (string, error)
+	GetRouters() map[string]descriptor.Router
 }
 
-func (d *descriptorsManagerImpl) GetRouters() map[string]*descriptor.Router {
+func (d *descriptorsManagerImpl) GetServiceName(filename string) (string, error) {
+	keeper, ok := d.m[filename]
+	if !ok {
+		return "", fmt.Errorf("fileName %s not found", filename)
+	}
+	return keeper.get().Name, nil
+}
+
+func (d *descriptorsManagerImpl) GetRouters() map[string]descriptor.Router {
 	if d.routers == nil {
 		d.buildRouters()
 	}
 	return d.routers
-}
-func (d *descriptorsManagerImpl) GetMathchedRouterName(req *descriptor.HTTPRequest) (string, string, error) {
-	if d.routers == nil {
-		d.buildRouters()
-	}
-	// cache the path -> service/method?
-	for serviceName, manager := range d.m {
-		if methodname, match := manager.matchedRouter(req); match {
-			return serviceName, methodname, nil
-		}
-	}
-	return "", "", fmt.Errorf("service not found")
-
 }
 
 func (d *descriptorsManagerImpl) GetFunctionDescriptor(serviceName, methodName string) (*descriptor.FunctionDescriptor, error) {
@@ -103,7 +99,7 @@ type descriptorsManagerImpl struct {
 	// map of service name to file name
 	serivceMap map[string]string
 	// map of service name to router
-	routers map[string]*descriptor.Router
+	routers map[string]descriptor.Router
 }
 
 func newDescriptorsManagerImpl() *descriptorsManagerImpl {
@@ -128,13 +124,13 @@ func (d *descriptorsManagerImpl) getFileName(serviceName string) (string, error)
 }
 
 func (d *descriptorsManagerImpl) buildRouters() error {
-	d.routers = make(map[string]*descriptor.Router)
+	d.routers = make(map[string]descriptor.Router)
 	for fileName, descriptorKeeper := range d.m {
 		serviceName, err := d.getFileName(fileName)
 		if err != nil {
 			return err
 		}
-		d.routers[serviceName] = &descriptorKeeper.get().Router
+		d.routers[serviceName] = descriptorKeeper.get().Router
 	}
 	return nil
 }

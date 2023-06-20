@@ -5,16 +5,18 @@ import (
 
 	"github.com/cloudwego/thriftgo/pkg/test"
 	"github.com/yiwen101/CardWizards/common"
+	"github.com/yiwen101/CardWizards/common/descriptor"
 )
 
 func TestBuildGenericClientFromPath(t *testing.T) {
 	filename := "arithmatic.thrift"
 	includeDir := common.RelativePathToIDLFromTest
-	_, e := buildGenericClientFromPath(filename, includeDir)
+	_, e := buildGenericClientFromPath("arithmatic", filename, includeDir)
 	test.Assert(t, e == nil)
 }
 
 func TestBuildGenericClients(t *testing.T) {
+	descriptor.BuildDescriptorManager(common.RelativePathToIDLFromTest)
 	err := BuildGenericClients(common.RelativePathToIDLFromTest)
 	test.Assert(t, err == nil)
 	g1, err := GetGenericClientforService("arithmatic")
