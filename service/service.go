@@ -6,36 +6,62 @@ import (
 	"net/http"
 
 	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/cloudwego/hertz/pkg/common/hlog"
 	"github.com/yiwen101/CardWizards/router"
 	client "github.com/yiwen101/CardWizards/service/clients"
 	"github.com/yiwen101/CardWizards/service/validate"
 )
 
-func GenericHandlerFor(method string) func(ctx context.Context, c *app.RequestContext) {
+type HandlerManager interface {
+	HandlerForAnnotatedRoutes(httpMethod string) func(ctx context.Context, c *app.RequestContext)
+	HandlerForRoute(serviceName, methodName string) func(ctx context.Context, c *app.RequestContext)
+}
+
+func GetHandlerManager() (HandlerManager, error) {
+	if hm == nil {
+		hm = &handlerManagerImpl{}
+	}
+	return hm, nil
+}
+
+func (hm *handlerManagerImpl) HandlerForAnnotatedRoutes(httpMethod string) func(ctx context.Context, c *app.RequestContext) {
+	routeManager, err := router.GetRouteManager()
+	if err != nil {
+		hlog.Fatal("Internal Server Error in getting the route manager: ", err)
+	}
+
 	return func(ctx context.Context, c *app.RequestContext) {
 
-		routeManager, err := router.GetRouteManager()
-		if err != nil {
-			c.String(http.StatusInternalServerError, "Internal Server Error in getting the route manager: "+err.Error())
-			return
-		}
-
-		serviceName, methodName, err := routeManager.ValidateRoute(c, method)
-		if err != nil {
-			c.String(http.StatusBadRequest, "invalid route"+err.Error())
-		}
-
-		validator := validate.NewValidator()
-		err = validator.ValidateBody(ctx, c)
-
+		serviceName, methodName, err := routeManager.ValidateRoute(c, httpMethod)
 		if err != nil {
 			c.String(http.StatusBadRequest, "invalid route: "+err.Error())
 			return
 		}
+		// todo cache handler
 
-		cli, err := client.GetGenericClientforService(serviceName)
+		handler := hm.HandlerForRoute(serviceName, methodName)
+		handler(ctx, c)
+	}
+}
+
+func (hm *handlerManagerImpl) HandlerForRoute(serviceName, methodName string) func(ctx context.Context, c *app.RequestContext) {
+
+	cli, err := client.GetGenericClientforService(serviceName)
+	if err != nil {
+		hlog.Fatal("Internal Server Error in getting the client: ", err)
+	}
+
+	validator, err := validate.NewValidatorFor(serviceName, methodName)
+	if err != nil {
+		hlog.Fatal("Internal Server Error in getting the validator: ", err)
+	}
+
+	return func(ctx context.Context, c *app.RequestContext) {
+
+		err = validator.ValidateBody(c, serviceName, methodName)
+
 		if err != nil {
-			c.String(http.StatusInternalServerError, "Internal Server Error in getting the client: "+err.Error())
+			c.String(http.StatusBadRequest, "invalid route: "+err.Error())
 			return
 		}
 
@@ -65,5 +91,9 @@ func GenericHandlerFor(method string) func(ctx context.Context, c *app.RequestCo
 		c.JSON(200, resp)
 	}
 }
+
+type handlerManagerImpl struct{}
+
+var hm HandlerManager
 
 // is directly useful for httpGenericcall, but not for jsonGeneric call; nevertheless, is still needed for my validator to function

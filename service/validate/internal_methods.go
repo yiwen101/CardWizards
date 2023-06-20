@@ -1,7 +1,6 @@
 package validate
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -9,6 +8,10 @@ import (
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/kitex/pkg/generic/descriptor"
 )
+
+type validatorImplement struct {
+	functionDescriptor *descriptor.FunctionDescriptor
+}
 
 func validateType(t *descriptor.TypeDescriptor, json interface{}, fieldName string) error {
 	//  it seems that all number encoded in json format are float64
@@ -126,7 +129,7 @@ func validateBody(fuc *descriptor.FunctionDescriptor, json map[string]interface{
 	return validateType(params[1].Type, json, "request")
 }
 
-func treatJsonBody(ctx context.Context, c *app.RequestContext) (map[string]interface{}, error) {
+func treatJsonBody(c *app.RequestContext) (map[string]interface{}, error) {
 	b, _ := c.Body()
 	var j map[string]interface{}
 

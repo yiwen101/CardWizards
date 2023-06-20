@@ -15,7 +15,7 @@ func TestBuildGenericClientFromPath(t *testing.T) {
 	test.Assert(t, e == nil)
 }
 
-func TestBuildGenericClients(t *testing.T) {
+func TestBuildGenericClientsAndGetGenericClientforService(t *testing.T) {
 	descriptor.BuildDescriptorManager(common.RelativePathToIDLFromTest)
 	err := BuildGenericClients(common.RelativePathToIDLFromTest)
 	test.Assert(t, err == nil)
