@@ -5,7 +5,7 @@
 - Run Nacos. The easiest way is to run it in a docker container using the image `nacos/nacos-server:2.0.3`. Use `centralx/nacos-server` instead if your chip is ARM.
 
 # How to use the Gateway
-1. Put the thrift files for the RPC server in the IDL folder that can be seen at the root directory of the project. Please do not create a subdirectory inside the IDL folder and/or change the project structure, or the gateway app might not be able to read the files. Also, if you wish to assign custom routes via annotation, make sure your thrift file's annotation does not contradict with the IDL Definition Specification for Mapping between Thrift and HTTP.
+1. Put the thrift files for the RPC server in the IDL folder that can be seen at the root directory of the project.![1](https://github.com/yiwen101/CardWizards/images/image_1.PNG) Please do not create a subdirectory inside the IDL folder and/or change the project structure, or the gateway app might not be able to read the files. Also, if you wish to assign custom routes via annotation, make sure your thrift file's annotation does not contradict with the [IDL Definition Specification for Mapping between Thrift and HTTP](https://www.cloudwego.io/docs/kitex/tutorials/advanced-feature/generic-call/thrift_idl_annotation_standards/).
 2. Be at the root directory of the project, run `go run .` in the terminal, then you can see the gateway running.
 
 ## Expected Behaviors
