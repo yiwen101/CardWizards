@@ -2,6 +2,9 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"strconv"
 
 	"log"
 
@@ -51,29 +54,65 @@ func (s *CalculatorImpl) TestValidator(ctx context.Context, request *arithmatic.
 type GenericServiceImpl struct {
 }
 
+type requestStruct struct {
+	FirstArguement  int `json:"firstArguement"`
+	SecondArguement int `json:"secondArguement"`
+}
+
+type responseStruct struct {
+	FirstArguement  int `json:"firstArguement"`
+	SecondArguement int `json:"secondArguement"`
+	Result          int `json:"result"`
+}
+
 func (g *GenericServiceImpl) GenericCall(ctx context.Context, method string, request interface{}) (response interface{}, err error) {
-	/*
-		var req arithmatic.Request
-		jsStr, ok := request.(string)
-		if !ok {
-			return nil, errors.New("request is not string")
-		}
+	jsonBytes, err := json.Marshal(request)
+	if err != nil {
+		return nil, err
+	}
+	str, err := strconv.Unquote(string(jsonBytes))
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
 
-		err = json.Unmarshal([]byte(jsStr), &req)
+	fmt.Println("strconv.Unquote(string(jsonBytes)) is: %s", str)
+	fmt.Println("strconv.Unquote(string(jsonBytes)) is: %s", str)
+	fmt.Println("strconv.Unquote(string(jsonBytes)) is: %s", str)
+	fmt.Println("strconv.Unquote(string(jsonBytes)) is: %s", str)
+	fmt.Println("strconv.Unquote(string(jsonBytes)) is: %s", str)
 
-		if err != nil {
-			return nil, err
-		}
-
-		response = &arithmatic.Response{FirstArguement: req.FirstArguement, SecondArguement: req.SecondArguement, Result_: req.FirstArguement + req.SecondArguement}
-		responseString, err := json.Marshal(response)
-		if err != nil {
-			return nil, err
-		}
-		return responseString, nil
-		// use jsoniter or other json parse sdk to assert request
-	*/
-	return "{\"SecondArguement\":7,\"result\":17,\"firstArguement\":10}", nil
+	var req requestStruct
+	err = json.Unmarshal([]byte(str), &req)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Println("req is: %v", req)
+	fmt.Println("req is: %v", req)
+	fmt.Println("req is: %v", req)
+	fmt.Println("req is: %v", req)
+	fmt.Println("req is: %v", req)
+	var resp responseStruct
+	resp.FirstArguement = 10
+	resp.SecondArguement = 7
+	resp.Result = 17
+	fmt.Println("resp is: %v", resp)
+	fmt.Println("resp is: %v", resp)
+	fmt.Println("resp is: %v", resp)
+	fmt.Println("resp is: %v", resp)
+	fmt.Println("resp is: %v", resp)
+	respBytes, err := json.Marshal(resp)
+	if err != nil {
+		return nil, err
+	}
+	result := string(respBytes)
+	fmt.Println("result is: %s", result)
+	fmt.Println("result is: %s", result)
+	fmt.Println("result is: %s", result)
+	fmt.Println("result is: %s", result)
+	fmt.Println("result is: %s", result)
+	return string(respBytes), nil
+	//return "{\"SecondArguement\":7,\"result\":17,\"firstArguement\":10}", nil
 
 }
 

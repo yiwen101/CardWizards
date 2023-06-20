@@ -2,13 +2,11 @@ package service
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/yiwen101/CardWizards/router"
 	client "github.com/yiwen101/CardWizards/service/clients"
-	"github.com/yiwen101/CardWizards/service/validate"
 )
 
 type HandlerManager interface {
@@ -61,19 +59,22 @@ func (hm *handlerManagerImpl) HandlerForRoute(serviceName, methodName string) (f
 		return nil, err
 	}
 
-	validator, err := validate.NewValidatorFor(serviceName, methodName)
-	if err != nil {
-		return nil, err
-	}
+	/*
+		validator, err := validate.NewValidatorFor(serviceName, methodName)
+		if err != nil {
+			return nil, err
+		}*/
 
 	return func(ctx context.Context, c *app.RequestContext) {
 
-		err = validator.ValidateBody(c, serviceName, methodName)
+		/*
+			err = validator.ValidateBody(c, serviceName, methodName)
 
-		if err != nil {
-			c.String(http.StatusBadRequest, "invalid route: "+err.Error())
-			return
-		}
+			if err != nil {
+				c.String(http.StatusBadRequest, "invalid route: "+err.Error())
+				return
+			}
+		*/
 
 		jsonbytes, err := c.Body()
 		// should not happen, otherwise indicate that there is problem with my validator
@@ -81,12 +82,8 @@ func (hm *handlerManagerImpl) HandlerForRoute(serviceName, methodName string) (f
 			c.String(http.StatusInternalServerError, "Internal Server Error in marshalling the json body: "+err.Error())
 			return
 		}
-		var jsonString string
-		json.Unmarshal(jsonbytes, &jsonString)
 
-		c.String(http.StatusOK, jsonString)
-
-		genericResponse, err := cli.GenericCall(ctx, methodName, jsonString)
+		genericResponse, err := cli.GenericCall(ctx, methodName, string(jsonbytes))
 		if err != nil {
 			c.String(http.StatusInternalServerError, "Internal Server Error in making the call: "+err.Error())
 			return

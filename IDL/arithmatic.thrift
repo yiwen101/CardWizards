@@ -9,7 +9,7 @@ struct Request {
 
 struct Response {
     1: i64 firstArguement (api.body = 'firstArguement')
-    2: i64 SecondArguement (api.body = 'secondArguement')
+    2: i64 secondArguement (api.body = 'secondArguement')
     3: optional string message
     4: i64 result (api.body = 'result')
 }
