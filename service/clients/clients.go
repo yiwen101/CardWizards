@@ -7,9 +7,9 @@ import (
 	"github.com/cloudwego/kitex/client"
 	"github.com/cloudwego/kitex/client/genericclient"
 	"github.com/cloudwego/kitex/pkg/generic"
-	"github.com/cloudwego/kitex/pkg/loadbalance"
 	"github.com/kitex-contrib/registry-nacos/resolver"
 	desc "github.com/yiwen101/CardWizards/common/descriptor"
+	"github.com/yiwen101/CardWizards/configuer/clientOption"
 )
 
 var dm desc.DescsManager
@@ -66,7 +66,7 @@ func BuildGenericClients(relativePath string) error {
 			file.Name(),
 			relativePath,
 			registryOption,
-			getServiceLoadBalancerOption(serviceName),
+			clientOption.GetServiceLoadBalancerOption(serviceName),
 		)
 
 		if err != nil {
@@ -113,9 +113,4 @@ func getServiceRegistryOption(serviceName string) (client.Option, error) {
 	}
 
 	return client.WithResolver(nacosResolver), nil
-}
-
-func getServiceLoadBalancerOption(serviceName string) client.Option {
-	// todo: enable optioning
-	return client.WithLoadBalancer(loadbalance.NewWeightedRoundRobinBalancer())
 }

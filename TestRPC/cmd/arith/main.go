@@ -50,7 +50,27 @@ type GenericServiceImpl struct {
 }
 
 func (g *GenericServiceImpl) GenericCall(ctx context.Context, method string, request interface{}) (response interface{}, err error) {
-	// use jsoniter or other json parse sdk to assert request
+	/*
+		var req arithmatic.Request
+		jsStr, ok := request.(string)
+		if !ok {
+			return nil, errors.New("request is not string")
+		}
+
+		err = json.Unmarshal([]byte(jsStr), &req)
+
+		if err != nil {
+			return nil, err
+		}
+
+		response = &arithmatic.Response{FirstArguement: req.FirstArguement, SecondArguement: req.SecondArguement, Result_: req.FirstArguement + req.SecondArguement}
+		responseString, err := json.Marshal(response)
+		if err != nil {
+			return nil, err
+		}
+		return responseString, nil
+		// use jsoniter or other json parse sdk to assert request
+	*/
 	return "{\"SecondArguement\":7,\"result\":17,\"firstArguement\":10}", nil
 
 }
