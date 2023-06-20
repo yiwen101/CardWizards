@@ -15,7 +15,16 @@ type DescsManager interface {
 	GetServiceDescriptor(serviceName string) (*descriptor.ServiceDescriptor, error)
 }
 
+func (d *descriptorsManagerImpl) GetRouters() map[string]*descriptor.Router {
+	if d.routers == nil {
+		d.buildRouters()
+	}
+	return d.routers
+}
 func (d *descriptorsManagerImpl) GetMathchedRouterName(req *descriptor.HTTPRequest) (string, string, error) {
+	if d.routers == nil {
+		d.buildRouters()
+	}
 	// cache the path -> service/method?
 	for serviceName, manager := range d.m {
 		if methodname, match := manager.matchedRouter(req); match {
@@ -23,6 +32,7 @@ func (d *descriptorsManagerImpl) GetMathchedRouterName(req *descriptor.HTTPReque
 		}
 	}
 	return "", "", fmt.Errorf("service not found")
+
 }
 
 func (d *descriptorsManagerImpl) GetFunctionDescriptor(serviceName, methodName string) (*descriptor.FunctionDescriptor, error) {
@@ -50,7 +60,7 @@ func BuildDescriptorManager(relativePath string) error {
 	flag := false
 
 	for _, file := range thiriftFiles {
-		log.Printf("file name: %s", file.Name())
+		log.Printf("reading file : %s", file.Name())
 		if file.IsDir() {
 			hlog.Fatal("failure reading thrrift files at IDL directory as it contains directory")
 		}
@@ -64,13 +74,7 @@ func BuildDescriptorManager(relativePath string) error {
 			flag = true
 			hlog.Fatal("error in building descriptor for service %s: %v", file.Name(), err)
 		}
-		serviceName := file.Name()[:len(file.Name())-7]
-		descManager.m[serviceName] = d
-	}
-
-	for serviceName := range descManager.m {
-		router := descManager.routers[serviceName]
-		descManager.routers[serviceName] = router
+		descManager.m[file.Name()] = d
 	}
 
 	descriptorManager = descManager
@@ -94,10 +98,43 @@ func GetDescriptorManager() (DescsManager, error) {
 var descriptorManager DescsManager
 
 type descriptorsManagerImpl struct {
-	m       map[string]*descriptorKeeper
-	routers map[string]descriptor.Router
+	// map of file names to descriptor keepers
+	m map[string]*descriptorKeeper
+	// map of service name to file name
+	serivceMap map[string]string
+	// map of service name to router
+	routers map[string]*descriptor.Router
 }
 
 func newDescriptorsManagerImpl() *descriptorsManagerImpl {
-	return &descriptorsManagerImpl{m: make(map[string]*descriptorKeeper), routers: make(map[string]descriptor.Router)}
+	return &descriptorsManagerImpl{m: make(map[string]*descriptorKeeper)}
+}
+func (d *descriptorsManagerImpl) buildServiceMap() {
+	d.serivceMap = make(map[string]string)
+	for fileName, manager := range d.m {
+		d.serivceMap[manager.get().Name] = fileName
+	}
+}
+func (d *descriptorsManagerImpl) getFileName(serviceName string) (string, error) {
+	if d.serivceMap == nil {
+		d.buildServiceMap()
+	}
+
+	fileName, ok := d.serivceMap[serviceName]
+	if !ok {
+		return "", fmt.Errorf("service %s not found", serviceName)
+	}
+	return fileName, nil
+}
+
+func (d *descriptorsManagerImpl) buildRouters() error {
+	d.routers = make(map[string]*descriptor.Router)
+	for fileName, descriptorKeeper := range d.m {
+		serviceName, err := d.getFileName(fileName)
+		if err != nil {
+			return err
+		}
+		d.routers[serviceName] = &descriptorKeeper.get().Router
+	}
+	return nil
 }
