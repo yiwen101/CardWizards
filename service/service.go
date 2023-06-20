@@ -13,8 +13,8 @@ import (
 )
 
 type HandlerManager interface {
-	HandlerForAnnotatedRoutes(httpMethod string) func(ctx context.Context, c *app.RequestContext)
-	HandlerForRoute(serviceName, methodName string) func(ctx context.Context, c *app.RequestContext)
+	HandlerForAnnotatedRoutes(httpMethod string) (func(ctx context.Context, c *app.RequestContext), error)
+	HandlerForRoute(serviceName, methodName string) (func(ctx context.Context, c *app.RequestContext), error)
 }
 
 func GetHandlerManager() (HandlerManager, error) {
@@ -23,10 +23,11 @@ func GetHandlerManager() (HandlerManager, error) {
 	}
 	return hm, nil
 }
-func (hm *handlerManagerImpl) HandlerForAnnotatedRoutes(httpMethod string) func(ctx context.Context, c *app.RequestContext) {
+func (hm *handlerManagerImpl) HandlerForAnnotatedRoutes(httpMethod string) (func(ctx context.Context, c *app.RequestContext), error) {
 	routeManager, err := router.GetRouteManager()
 	if err != nil {
 		hlog.Fatal("Internal Server Error in getting the route manager: ", err)
+		return nil, err
 	}
 
 	handlerCache := &handlerCache{}
@@ -45,17 +46,22 @@ func (hm *handlerManagerImpl) HandlerForAnnotatedRoutes(httpMethod string) func(
 			return
 		}
 
-		handler = hm.HandlerForRoute(serviceName, methodName)
+		handler, err = hm.HandlerForRoute(serviceName, methodName)
+		if err != nil {
+			c.String(http.StatusInternalServerError, "Internal Server Error in getting the handler: "+err.Error())
+			return
+		}
 		handlerCache.save(serviceName, methodName, handler)
 		handler(ctx, c)
-	}
+	}, nil
 }
 
-func (hm *handlerManagerImpl) HandlerForRoute(serviceName, methodName string) func(ctx context.Context, c *app.RequestContext) {
+func (hm *handlerManagerImpl) HandlerForRoute(serviceName, methodName string) (func(ctx context.Context, c *app.RequestContext), error) {
 
 	cli, err := client.GetGenericClientforService(serviceName)
 	if err != nil {
 		hlog.Fatal("Internal Server Error in getting the client: ", err)
+		return nil, err
 	}
 
 	validator, err := validate.NewValidatorFor(serviceName, methodName)
@@ -96,9 +102,8 @@ func (hm *handlerManagerImpl) HandlerForRoute(serviceName, methodName string) fu
 		}
 
 		c.JSON(200, resp)
-	}
+	}, nil
 }
-
 
 type handlerCache struct {
 	m map[string]map[string]func(ctx context.Context, c *app.RequestContext)
@@ -124,8 +129,6 @@ func (hc *handlerCache) save(serviceName, methodName string, handler func(ctx co
 	}
 	hc.m[serviceName][methodName] = handler
 }
-
-
 
 type handlerManagerImpl struct{}
 

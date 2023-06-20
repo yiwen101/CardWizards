@@ -41,14 +41,26 @@ type toRegist struct {
 	handler    func(ctx context.Context, c *app.RequestContext)
 }
 
-func generateToRegists() {
+func generateToRegists() error {
 	if tRs != nil {
-		return
+		return nil
 	}
-	tRs = append(generateRegularToRegists(), generateGenericToRegists()...)
+	ls1, err := generateGenericToRegists()
+	if err != nil {
+		log.Fatal("Internal Server Error in getting the handler: ", err)
+		return err
+	}
+	ls2, err := generateRegularToRegists()
+	if err != nil {
+		log.Fatal("Internal Server Error in getting the handler: ", err)
+		return err
+	}
+
+	tRs = append(ls1, ls2...)
+	return nil
 }
 
-func generateGenericToRegists() []toRegist {
+func generateGenericToRegists() ([]toRegist, error) {
 	hm, err := service.GetHandlerManager()
 	if err != nil {
 		hlog.Fatal("Internal Server Error in getting the handler manager: ", err)
@@ -59,7 +71,12 @@ func generateGenericToRegists() []toRegist {
 	// how to write this as const? since arrays are not constants
 
 	for i, method := range common.HTTPMethods() {
-		handlerFunc := hm.HandlerForAnnotatedRoutes(method)
+		handlerFunc, err := hm.HandlerForAnnotatedRoutes(method)
+		if err != nil {
+			log.Fatal("Internal Server Error in getting the handler: ", err)
+			return nil, err
+		}
+
 		tR := toRegist{
 			httpMethod: method,
 			path:       common.GenericPath2,
@@ -67,13 +84,13 @@ func generateGenericToRegists() []toRegist {
 		}
 		ls[i] = tR
 	}
-	return ls
+	return ls, nil
 	// todo
 	// complex feature: use the annotation of the thrift file
 	// intermediate feature: give route at command line
 }
 
-func generateRegularToRegists() []toRegist {
+func generateRegularToRegists() ([]toRegist, error) {
 	hm, err := service.GetHandlerManager()
 	if err != nil {
 		hlog.Fatal("Internal Server Error in getting the handler manager: ", err)
@@ -93,14 +110,19 @@ func generateRegularToRegists() []toRegist {
 
 	for i, route := range routes {
 		http, path := route.GetRoute()
+		handler, err := hm.HandlerForRoute(route.ServiceName, route.MethodName)
+		if err != nil {
+			log.Fatal("Internal Server Error in getting the handler: ", err)
+			return nil, err
+		}
 		toRegist := toRegist{
 			httpMethod: http,
 			path:       path,
-			handler:    hm.HandlerForRoute(route.ServiceName, route.MethodName),
+			handler:    handler,
 		}
 		ls[i] = toRegist
 	}
-	return ls
+	return ls, nil
 }
 
 var tRs []toRegist

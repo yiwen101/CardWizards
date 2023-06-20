@@ -6,9 +6,11 @@ import (
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/thriftgo/pkg/test"
+	"github.com/yiwen101/CardWizards/common/descriptor"
+	"github.com/yiwen101/CardWizards/service/clients"
 )
 
-func handlerCacheTest(t *testing.T) {
+func TestHandlerCache(t *testing.T) {
 	h := handlerCache{}
 	f, ok := h.get("test", "test")
 	test.Assert(t, ok == false)
@@ -23,4 +25,20 @@ func handlerCacheTest(t *testing.T) {
 	test.Assert(t, testEffect == 1)
 }
 
-
+func TestHandlerManager(t *testing.T) {
+	descriptor.BuildDescriptorManager("../IDL")
+	clients.BuildGenericClients("../IDL")
+	hm, err := GetHandlerManager()
+	test.Assert(t, err == nil)
+	f, err := hm.HandlerForAnnotatedRoutes("GET")
+	test.Assert(t, err == nil)
+	test.Assert(t, f != nil)
+	f, err = hm.HandlerForRoute("arithmatic", "Add")
+	test.Assert(t, err == nil)
+	test.Assert(t, f != nil)
+	/*  this leads to hlog.Fatal
+	f, err = hm.HandlerForRoute("fake", "fake")
+	test.Assert(t, err != nil)
+	test.Assert(t, f == nil)
+	*/
+}
