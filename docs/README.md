@@ -1,1 +1,30 @@
-prerequisites: Install Kitex. Instructions can be found here. Install Hertz. Instructions can be found hereMake sure that your kitex server a with server options for supporting generic calls and service registry with Nacos. Helps for json-thrift genericCall and service registryRun Nacos. The easiest way is to run it in docker container using the image "nacos/nacos-server:2.0.3" . Use %E2%80%9Ccentralx/nacos-server%E2%80%9D instead if your chip is ARM.How to use the Gateway:1: Put the thrift files for the RPC server in the IDL folder that can be seen at the root directory of the project:Please do not create a subdirectory inside the IDL folder and/or change the project structure, or the gateway app might not be able to read the files.Also, if you wish to assign custom routes via annotation, make sure your thrift file%E2%80%99s annotation does not contradict with the IDL Definition Specification for Mapping between Thrift and HTTP 2: Be at the root directory of the project, run %E2%80%9Cgo run .%E2%80%9D in the terminal, then you can see the gateway running: Expected BehaviorsDefault Route:For all services and methods , it will be automatically registered with route /:serviceName/:methodName under Post method. For example,the %E2%80%9CCreateNote%E2%80%9D method of the NoteService will be registered under :%E2%80%9CPost localhost:8080/NoteService/CreateNote%E2%80%9DCustomised Route:you could also assign customised route to by annotating the idl file like such:Then the Add method will also be registered at  %E2%80%9CGet localhost:8080/arith/add%E2%80%9DDemonstration on RouteA successful call to the %E2%80%9CAdd%E2%80%9D method of the %E2%80%9Carithmetic%E2%80%9D service at path %E2%80%9C/arithmetic/Add%E2%80%9D under the POST method.The call to %E2%80%9Carith/add%E2%80%9D under GET method is also successful, as it is customized route as annotated in the IDL file:A case with no matching route:Parameter Validation and RPC Call:Parameters to the method as stipulated in the IDL files should be passed as a json encoded body in your http request. The gateway will automatically validate it before making the rpc call. Error message will be displayed to the user to indicate the issue that leads to failure of validation. If the validation is successful, it will forward the rpc response received from the upstreams back.Demonstration on Validation and RPC Call:Error message highlighting the type mismatch for the argument passed in.Error message highlighting field mismatch for the argument passed in.Redundant fields do not hamper validation, can still get correct response:
+# Prerequisites
+- Install Kitex. Instructions can be found [here](https://github.com/cloudwego/kitex).
+- Install Hertz. Instructions can be found [here](https://github.com/cloudwego/hertz).
+- Make sure that your kitex server is configured with server options for supporting generic calls and service registry with Nacos. This helps for json-thrift genericCall and service registry.
+- Run Nacos. The easiest way is to run it in a docker container using the image `nacos/nacos-server:2.0.3`. Use `centralx/nacos-server` instead if your chip is ARM.
+
+# How to use the Gateway
+1. Put the thrift files for the RPC server in the IDL folder that can be seen at the root directory of the project. Please do not create a subdirectory inside the IDL folder and/or change the project structure, or the gateway app might not be able to read the files. Also, if you wish to assign custom routes via annotation, make sure your thrift file's annotation does not contradict with the IDL Definition Specification for Mapping between Thrift and HTTP.
+2. Be at the root directory of the project, run `go run .` in the terminal, then you can see the gateway running.
+
+## Expected Behaviors
+### Default Route
+For all services and methods, it will be automatically registered with route `/:serviceName/:methodName` under Post method. For example, the `CreateNote` method of the NoteService will be registered under `Post localhost:8080/NoteService/CreateNote`.
+
+### Customized Route
+You could also assign customized routes by annotating the idl file like such:
+Then the Add method will also be registered at `Get localhost:8080/arith/add`.
+
+## Demonstration on Route
+- A successful call to the `Add` method of the `arithmetic` service at path `/arithmetic/Add` under the POST method.
+- The call to `/arith/add` under GET method is also successful, as it is a customized route as annotated in the IDL file.
+- A case with no matching route.
+
+## Parameter Validation and RPC Call
+Parameters to the method as stipulated in the IDL files should be passed as a JSON-encoded body in your HTTP request. The gateway will automatically validate it before making the RPC call. Error messages will be displayed to the user to indicate any issues that lead to failure of validation. If validation is successful, it will forward the RPC response received from upstreams back.
+
+## Demonstration on Validation and RPC Call
+- Error message highlighting type mismatch for argument passed in.
+- Error message highlighting field mismatch for argument passed in.
+- Redundant fields do not hamper validation; can still get correct response.
