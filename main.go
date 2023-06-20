@@ -9,13 +9,17 @@ import (
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/app/server"
+	"github.com/cloudwego/hertz/pkg/common/hlog"
 	"github.com/yiwen101/CardWizards/common"
 	"github.com/yiwen101/CardWizards/common/descriptor"
+	"github.com/yiwen101/CardWizards/router"
 	"github.com/yiwen101/CardWizards/service"
 	clients "github.com/yiwen101/CardWizards/service/clients"
 )
 
-// interface; abstraction; object oriented; single duty, unit testing, configuration
+// interface; bindValidator/clients to handler; abstraction; object oriented; single duty, unit testing, configuration, singleManager, singleDatabase, use of ok, err and fatal, common.http as const; // complex feature: use the annotation of the thrift file
+	// intermediate feature: give route at command line
+
 func main() {
 	// todo, set up logs and tracer?
 	// check proposal, feedbasktemplate, milestone2 sample and software engineering/design pattern books
@@ -42,26 +46,66 @@ type toRegist struct {
 	handler    func(ctx context.Context, c *app.RequestContext)
 }
 
-func generateDefaultToRegists() []toRegist {
+func generateToRegists() []toRegist {
+	return append(generateDefaultToRegists(), generateGenericToRegists())
+}
+
+func generateGenericToRegists() []toRegist {
+	hm, err := service.GetHandlerManager()
+	if err != nil {
+		hlog.Fatal("Internal Server Error in getting the handler manager: ", err)
+	}
+
 	ls := make([]toRegist, 7)
 
-	methods := []string{http.MethodPost, http.MethodGet, http.MethodPut, http.MethodDelete, http.MethodPatch, http.MethodHead, http.MethodOptions}
+	// how to write this as const? since arrays are not constants
 
-	for i, method := range methods {
-		handlerFunc := service.GenericHandlerFor(method)
+	for i, method := range common.HTTPMethods() {
+		handlerFunc := hm.HandlerForAnnotatedRoutes(method)
 		tR := toRegist{
 			httpMethod: method,
-			path:       common.RefaultRoute,
+			path:       common.GenericPath2,
 			handler:    handlerFunc,
 		}
 		ls[i] = tR
 	}
-
 	return ls
 	// todo
 	// complex feature: use the annotation of the thrift file
 	// intermediate feature: give route at command line
 }
+
+func generateRegularToRegists() []toRegist {
+	hm, err := service.GetHandlerManager()
+	if err != nil {
+		hlog.Fatal("Internal Server Error in getting the handler manager: ", err)
+	}
+
+	rm, err := router.GetRouteManager()
+	if err != nil {
+		hlog.Fatal("Internal Server Error in getting the route manager: ", err)
+	}
+
+	routes, err := rm.GetRoutes()
+	if err != nil {
+		hlog.Fatal("Internal Server Error in getting the routes: ", err)
+	}
+
+	ls := make([]toRegist, len(routes))
+
+	for i, route := range routes {
+		http, path := route.GetRoute(),
+		toRegist := toRegist{
+			httpMethod: http,
+			path:      path,
+			handler:    hm.HandlerForRoute(route.ServiceName, route.Method),
+		}
+		ls[i] = toRegist
+	}
+
+
+}
+
 
 func registerRoutes(r *server.Hertz, tRs []toRegist) {
 

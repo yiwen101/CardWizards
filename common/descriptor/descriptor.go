@@ -14,41 +14,8 @@ type DescsManager interface {
 	GetServiceDescriptor(serviceName string) (*descriptor.ServiceDescriptor, error)
 	GetServiceName(filename string) (string, error)
 	GetRouters() map[string]descriptor.Router
-}
-
-func (d *descriptorsManagerImpl) GetServiceName(filename string) (string, error) {
-	keeper, ok := d.m[filename]
-	if !ok {
-		return "", fmt.Errorf("fileName %s not found", filename)
-	}
-	return keeper.get().Name, nil
-}
-
-func (d *descriptorsManagerImpl) GetRouters() map[string]descriptor.Router {
-	if d.routers == nil {
-		d.buildRouters()
-	}
-	return d.routers
-}
-
-func (d *descriptorsManagerImpl) GetFunctionDescriptor(serviceName, methodName string) (*descriptor.FunctionDescriptor, error) {
-	ser, err := d.GetServiceDescriptor(serviceName)
-	if err != nil {
-		return nil, err
-	}
-	return ser.LookupFunctionByMethod(methodName)
-}
-
-func (d *descriptorsManagerImpl) GetServiceDescriptor(serviceName string) (*descriptor.ServiceDescriptor, error) {
-	str, err := d.getFileName(serviceName)
-	if err != nil {
-		return nil, err
-	}
-	descriptorKeeper, ok := d.m[str]
-	if !ok {
-		return nil, fmt.Errorf("service %s not found", serviceName)
-	}
-	return descriptorKeeper.get(), nil
+	GetAllServiceNames() ([]string, error)
+	GetAllMethodNames(serviceName string) ([]string, error)
 }
 
 func BuildDescriptorManager(relativePath string) error {
@@ -95,46 +62,63 @@ func GetDescriptorManager() (DescsManager, error) {
 	return descriptorManager, nil
 }
 
-var descriptorManager DescsManager
-
-type descriptorsManagerImpl struct {
-	// map of file names to descriptor keepers
-	m map[string]*descriptorKeeper
-	// map of service name to file name
-	serivceMap map[string]string
-	// map of service name to router
-	routers map[string]descriptor.Router
-}
-
-func newDescriptorsManagerImpl() *descriptorsManagerImpl {
-	return &descriptorsManagerImpl{m: make(map[string]*descriptorKeeper)}
-}
-func (d *descriptorsManagerImpl) buildServiceMap() {
-	d.serivceMap = make(map[string]string)
-	for fileName, manager := range d.m {
-		d.serivceMap[manager.get().Name] = fileName
-	}
-}
-func (d *descriptorsManagerImpl) getFileName(serviceName string) (string, error) {
-	if d.serivceMap == nil {
-		d.buildServiceMap()
-	}
-
-	fileName, ok := d.serivceMap[serviceName]
+func (d *descriptorsManagerImpl) GetServiceName(filename string) (string, error) {
+	keeper, ok := d.m[filename]
 	if !ok {
-		return "", fmt.Errorf("service %s not found", serviceName)
+		return "", fmt.Errorf("fileName %s not found", filename)
 	}
-	return fileName, nil
+	return keeper.get().Name, nil
 }
 
-func (d *descriptorsManagerImpl) buildRouters() error {
-	d.routers = make(map[string]descriptor.Router)
-	for fileName, descriptorKeeper := range d.m {
+func (d *descriptorsManagerImpl) GetRouters() map[string]descriptor.Router {
+	if d.routers == nil {
+		d.buildRouters()
+	}
+	return d.routers
+}
+
+func (d *descriptorsManagerImpl) GetFunctionDescriptor(serviceName, methodName string) (*descriptor.FunctionDescriptor, error) {
+	ser, err := d.GetServiceDescriptor(serviceName)
+	if err != nil {
+		return nil, err
+	}
+	return ser.LookupFunctionByMethod(methodName)
+}
+
+func (d *descriptorsManagerImpl) GetServiceDescriptor(serviceName string) (*descriptor.ServiceDescriptor, error) {
+	str, err := d.getFileName(serviceName)
+	if err != nil {
+		return nil, err
+	}
+	descriptorKeeper, ok := d.m[str]
+	if !ok {
+		return nil, fmt.Errorf("service %s not found", serviceName)
+	}
+	return descriptorKeeper.get(), nil
+}
+
+func (d *descriptorsManagerImpl) GetAllServiceNames() ([]string, error) {
+	result := make([]string, 0)
+	for fileName := range d.m {
 		serviceName, err := d.GetServiceName(fileName)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		d.routers[serviceName] = descriptorKeeper.get().Router
+		result = append(result, serviceName)
 	}
-	return nil
+	return result, nil
+}
+
+func (d *descriptorsManagerImpl) GetAllMethodNames(serviceName string) ([]string, error) {
+	serviceDescriptor, err := d.GetServiceDescriptor(serviceName)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]string, 0)
+
+	for methodName := range serviceDescriptor.Functions {
+		result = append(result, methodName)
+	}
+	return result, nil
 }
