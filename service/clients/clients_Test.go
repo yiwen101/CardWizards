@@ -17,8 +17,10 @@ func TestBuildGenericClientFromPath(t *testing.T) {
 func TestBuildGenericClients(t *testing.T) {
 	err := BuildGenericClients(common.RelativePathToIDLFromTest)
 	test.Assert(t, err == nil)
-	g1 := ServiceToClientMap["arithmatic"]
+	g1, err := GetGenericClientforService("arithmatic")
 	test.Assert(t, g1 != nil)
-	g2 := ServiceToClientMap["fake"]
+	test.Assert(t, err == nil)
+	g2, err := GetGenericClientforService("arithmatic2")
 	test.Assert(t, g2 == nil)
+	test.Assert(t, err != nil)
 }

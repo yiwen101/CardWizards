@@ -18,3 +18,17 @@ func TestDescriptorsManager(t *testing.T) {
 	_, error = dm.GetFunctionDescriptor("arithmatic", "Add")
 	test.Assert(t, error == nil)
 }
+
+func TestNilRouter(t *testing.T) {
+	BuildDescriptorManager(common.RelativePathToIDLFromTest)
+	dm, err := GetDescriptorManager()
+	test.Assert(t, err == nil)
+	service, err := dm.GetServiceDescriptor("arithmatic")
+	test.Assert(t, err == nil)
+	test.Assert(t, service != nil)
+	serviceName := service.Name
+	test.Assert(t, serviceName == "arithmatic")
+	funcs := service.Functions
+	test.Assert(t, len(funcs) == 5)
+
+}

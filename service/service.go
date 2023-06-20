@@ -33,8 +33,8 @@ func GenericHandlerFor(method string) func(ctx context.Context, c *app.RequestCo
 			return
 		}
 
-		cli, ok := client.ServiceToClientMap[serviceName]
-		if !ok {
+		cli, err := client.GetGenericClientforService(serviceName)
+		if err != nil {
 			c.String(http.StatusInternalServerError, "Internal Server Error in getting the client: "+err.Error())
 			return
 		}
