@@ -40,8 +40,8 @@ func (r *routeManagerImpl) isAnnotatedRoute(req *descriptor.HTTPRequest) (string
 		r.routers = r.dm.GetRouters()
 	}
 
-	serviceName, methodName, err := r.findInCache(req)
-	if err == nil {
+	serviceName, methodName, ok := r.findInCache(req)
+	if ok {
 		return serviceName, methodName, nil
 	}
 
@@ -56,15 +56,15 @@ func (r *routeManagerImpl) isAnnotatedRoute(req *descriptor.HTTPRequest) (string
 	return "", "", fmt.Errorf("service not found")
 }
 
-func (r *routeManagerImpl) findInCache(req *descriptor.HTTPRequest) (string, string, error) {
+func (r *routeManagerImpl) findInCache(req *descriptor.HTTPRequest) (string, string, bool) {
 	httpMehtod, path := req.Method, req.Path
 	m, ok := r.cache[httpMehtod]
 	if ok {
 		if pair, ok := m[path]; ok {
-			return pair.serviceName, pair.methodName, nil
+			return pair.serviceName, pair.methodName, true
 		}
 	}
-	return "", "", fmt.Errorf("service not found in cache")
+	return "", "", false
 }
 
 func (r *routeManagerImpl) saveInCache(httpMehtod, path, serviceName, methodName string) {

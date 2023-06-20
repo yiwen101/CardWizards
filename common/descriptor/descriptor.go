@@ -32,15 +32,19 @@ func (d *descriptorsManagerImpl) GetRouters() map[string]descriptor.Router {
 }
 
 func (d *descriptorsManagerImpl) GetFunctionDescriptor(serviceName, methodName string) (*descriptor.FunctionDescriptor, error) {
-	manager, ok := d.m[serviceName]
-	if !ok {
-		return nil, fmt.Errorf("service %s not found", serviceName)
+	ser, err := d.GetServiceDescriptor(serviceName)
+	if err != nil {
+		return nil, err
 	}
-	return manager.get().LookupFunctionByMethod(methodName)
+	return ser.LookupFunctionByMethod(methodName)
 }
 
 func (d *descriptorsManagerImpl) GetServiceDescriptor(serviceName string) (*descriptor.ServiceDescriptor, error) {
-	descriptorKeeper, ok := d.m[serviceName]
+	str, err := d.getFileName(serviceName)
+	if err != nil {
+		return nil, err
+	}
+	descriptorKeeper, ok := d.m[str]
 	if !ok {
 		return nil, fmt.Errorf("service %s not found", serviceName)
 	}
@@ -126,7 +130,7 @@ func (d *descriptorsManagerImpl) getFileName(serviceName string) (string, error)
 func (d *descriptorsManagerImpl) buildRouters() error {
 	d.routers = make(map[string]descriptor.Router)
 	for fileName, descriptorKeeper := range d.m {
-		serviceName, err := d.getFileName(fileName)
+		serviceName, err := d.GetServiceName(fileName)
 		if err != nil {
 			return err
 		}
