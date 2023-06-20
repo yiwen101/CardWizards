@@ -11,6 +11,27 @@ import (
 	desc "github.com/yiwen101/CardWizards/common/descriptor"
 )
 
+var routeManager RouteManager
+var routes []Route
+
+type Route struct {
+	httpMethod  string
+	ServiceName string
+	MethodName  string
+}
+
+type routeManagerImpl struct {
+	dm      desc.DescsManager
+	cache   map[string]map[string]Route
+	routers map[string]descriptor.Router
+}
+
+func (d *Route) GetRoute() (httpMethod string, path string) {
+	path = "/" + d.serviceName + "/" + d.methodName
+	return d.httpMethod, path
+}
+
+/*
 func (r *routeManagerImpl) isGenericRoute(serviceName, methodName string) error {
 
 	_, err := r.dm.GetServiceDescriptor(serviceName)
@@ -20,20 +41,7 @@ func (r *routeManagerImpl) isGenericRoute(serviceName, methodName string) error 
 	_, err = r.dm.GetFunctionDescriptor(serviceName, methodName)
 	return err
 }
-
-/*func (d *descriptorsManagerImpl) GetMathchedRouterName(req *descriptor.HTTPRequest) (string, string, error) {
-	if d.routers == nil {
-		d.buildRouters()
-	}
-	// cache the path -> service/method?
-	for serviceName, manager := range d.m {
-		if methodname, match := manager.matchedRouter(req); match {
-			return serviceName, methodname, nil
-		}
-	}
-	return "", "", fmt.Errorf("service not found")
-
-}*/
+*/
 
 func (r *routeManagerImpl) isAnnotatedRoute(req *descriptor.HTTPRequest) (string, string, error) {
 	if r.routers == nil {
@@ -69,14 +77,14 @@ func (r *routeManagerImpl) findInCache(req *descriptor.HTTPRequest) (string, str
 
 func (r *routeManagerImpl) saveInCache(httpMehtod, path, serviceName, methodName string) {
 	if r.cache == nil {
-		r.cache = make(map[string]map[string]routePair)
+		r.cache = make(map[string]map[string]Route)
 	}
 	m, ok := r.cache[httpMehtod]
 	if !ok {
-		m = make(map[string]routePair)
+		m = make(map[string]Route)
 		r.cache[httpMehtod] = m
 	}
-	m[path] = routePair{serviceName: serviceName, methodName: methodName}
+	m[path] = Route{serviceName: serviceName, methodName: methodName}
 }
 
 func (r *routeManagerImpl) buildRequest(c *app.RequestContext, method string) (*descriptor.HTTPRequest, error) {
@@ -99,17 +107,4 @@ func newRouteManagerImpl() (RouteManager, error) {
 		return nil, err
 	}
 	return &routeManagerImpl{dm: dm}, nil
-}
-
-var routeManager RouteManager
-
-type routeManagerImpl struct {
-	dm      desc.DescsManager
-	cache   map[string]map[string]routePair
-	routers map[string]descriptor.Router
-}
-
-type routePair struct {
-	serviceName string
-	methodName  string
 }

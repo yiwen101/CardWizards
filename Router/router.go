@@ -8,6 +8,7 @@ import (
 // router is responsible for finding the corresponding service and method according to the request path.
 type RouteManager interface {
 	ValidateRoute(c *app.RequestContext, httpMethod string) (string, string, error)
+	GetRoutes() ([]Route, error)
 }
 
 func GetRouteManager() (RouteManager, error) {
@@ -22,15 +23,42 @@ func GetRouteManager() (RouteManager, error) {
 }
 
 func (r *routeManagerImpl) ValidateRoute(c *app.RequestContext, httpMethod string) (string, string, error) {
-	serviceName, methodName := c.Param("serviceName"), c.Param("methodName")
-	err := r.isGenericRoute(serviceName, methodName)
-	if err == nil {
-		return serviceName, methodName, nil
-	}
+	//serviceName, methodName := c.Param("serviceName"), c.Param("methodName")
+	/*
+		err := r.isGenericRoute(serviceName, methodName)
+		if err == nil {
+			return serviceName, methodName, nil
+		}
+	*/
+
 	req, err := r.buildRequest(c, httpMethod)
 	if err != nil {
 		return "", "", err
 	}
-
 	return r.isAnnotatedRoute(req)
+}
+
+func (r *routeManagerImpl) GetRoutes() ([]Route, error) {
+	if routes != nil {
+		return routes, nil
+	}
+	services, err := r.dm.GetAllServiceNames()
+	if err != nil {
+		return nil, err
+	}
+	for _, serviceName := range services {
+		methods, err := r.dm.GetAllMethodNames(serviceName)
+		if err != nil {
+			return nil, err
+		}
+		for _, methodName := range methods {
+			route := Route{
+				httpMethod:  "POST",
+				serviceName: serviceName,
+				methodName:  methodName,
+			}
+			routes = append(routes, route)
+		}
+	}
+	return routes, nil
 }

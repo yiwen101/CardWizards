@@ -9,12 +9,13 @@ import (
 	"github.com/yiwen101/CardWizards/common/descriptor"
 )
 
-func Test(t *testing.T) {
-	// relative path from here to IDL
+func TestValidateAnnotatedRoutes(t *testing.T) {
+	// initialise descriptor manager, which this module depend on
 	descriptor.BuildDescriptorManager("../IDL")
 	dm, err := descriptor.GetDescriptorManager()
 	test.Assert(t, err == nil)
 
+	// test GetRouteManager
 	rmTemp, err := GetRouteManager()
 	test.Assert(t, err == nil)
 	test.Assert(t, rmTemp != nil)
@@ -39,4 +40,16 @@ func Test(t *testing.T) {
 	test.Assert(t, err == nil)
 	test.Assert(t, serviceName == "arithmatic" && methodName == "Add")
 
+}
+
+func TestGetRoute(t *testing.T) {
+	descriptor.BuildDescriptorManager("../IDL")
+
+	rmTemp, err := GetRouteManager()
+	test.Assert(t, err == nil)
+	test.Assert(t, rmTemp != nil)
+
+	routes, err := rmTemp.GetRoutes()
+	test.Assert(t, err == nil)
+	test.Assert(t, len(routes) > 0)
 }
