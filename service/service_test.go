@@ -35,7 +35,7 @@ func TestHandlerManager(t *testing.T) {
 	f, err := hm.HandlerForAnnotatedRoutes("GET")
 	test.Assert(t, err == nil)
 	test.Assert(t, f != nil)
-	f, err = hm.HandlerForRoute("arithmatic", "Add")
+	f, err = hm.HandlerForRoute("arithmetic", "Add")
 	test.Assert(t, err == nil)
 	test.Assert(t, f != nil)
 	f, err = hm.HandlerForRoute("fake", "fake")

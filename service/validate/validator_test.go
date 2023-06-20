@@ -13,7 +13,7 @@ func TestValidateBody(t *testing.T) {
 	descriptor.BuildDescriptorManager(common.RelativePathToIDLFromTest)
 	dm, err := descriptor.GetDescriptorManager()
 	test.Assert(t, err == nil)
-	arithAddDescriptor, err := dm.GetFunctionDescriptor("arithmatic", "Add")
+	arithAddDescriptor, err := dm.GetFunctionDescriptor("arithmetic", "Add")
 	test.Assert(t, err == nil)
 
 	// test whether could validate simple struct like such:
@@ -58,7 +58,7 @@ func TestValidateBody(t *testing.T) {
 		where type "Request" is the same as the one above
 	*/
 
-	finalTestDescriptor, err := dm.GetFunctionDescriptor("arithmatic", "TestValidator")
+	finalTestDescriptor, err := dm.GetFunctionDescriptor("arithmetic", "TestValidator")
 	test.Assert(t, err == nil)
 	finalTest := map[string]interface{}{"recur": goodJsonBody, "extra": map[string]string{"key": "value"}}
 	err = validateBody(finalTestDescriptor, finalTest)
@@ -68,8 +68,8 @@ func TestValidateBody(t *testing.T) {
 
 func TestNewValidatorFor(t *testing.T) {
 	descriptor.BuildDescriptorManager(common.RelativePathToIDLFromTest)
-	_, err := NewValidatorFor("arithmatic", "Add")
+	_, err := NewValidatorFor("arithmetic", "Add")
 	test.Assert(t, err == nil)
-	_, err = NewValidatorFor("arithmatic", "Add2")
+	_, err = NewValidatorFor("arithmetic", "Add2")
 	test.Assert(t, err != nil)
 }

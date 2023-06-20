@@ -22,11 +22,11 @@ func TestValidateAnnotatedRoutes(t *testing.T) {
 	test.Assert(t, err == nil)
 	test.Assert(t, rmTemp != nil)
 
-	// service name is arithmatic, method name is Add, but annotated path is /arith/add
+	// service name is arithmetic, method name is Add, but annotated path is /arith/add
 	//Response Add(1: Request request ) ( api.get = "/arith/add" )
 	rm := routeManagerImpl{dm: dm}
 
-	httpReq, err := http.NewRequest("GET", "/arithmatic/Add", nil)
+	httpReq, err := http.NewRequest("GET", "/arithmetic/Add", nil)
 	test.Assert(t, err == nil)
 	req, err := generic.FromHTTPRequest(httpReq)
 	test.Assert(t, err == nil)
@@ -40,7 +40,7 @@ func TestValidateAnnotatedRoutes(t *testing.T) {
 	test.Assert(t, err == nil)
 	serviceName, methodName, err = rm.isAnnotatedRoute(req)
 	test.Assert(t, err == nil)
-	test.Assert(t, serviceName == "arithmatic" && methodName == "Add")
+	test.Assert(t, serviceName == "arithmetic" && methodName == "Add")
 }
 
 func TestBuildAndGetRoutes(t *testing.T) {

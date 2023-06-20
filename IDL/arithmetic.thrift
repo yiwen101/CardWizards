@@ -1,4 +1,4 @@
-namespace go arithmatic
+namespace go arithmetic
 
 struct Request {
     1: i64 firstArguement (api.query = 'firstArguement')
@@ -20,7 +20,7 @@ struct testValidator {
 }
 
 
-service arithmatic {
+service arithmetic {
     Response Add(1: Request request ) ( api.get = "/arith/add" )
     Response Subtract(1: Request request) ( api.get = "/arith/subtract")
     Response Multiply(1: Request request) ( api.head = "/arith/multiply")
