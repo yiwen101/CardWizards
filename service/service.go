@@ -23,32 +23,6 @@ func GetHandlerManager() (HandlerManager, error) {
 	}
 	return hm, nil
 }
-
-type handlerCache struct {
-	m map[string]map[string]func(ctx context.Context, c *app.RequestContext)
-}
-
-func (hc *handlerCache) get(serviceName, methodName string) (func(ctx context.Context, c *app.RequestContext), bool) {
-	if hc.m == nil {
-		hc.m = make(map[string]map[string]func(ctx context.Context, c *app.RequestContext))
-	}
-	if hc.m[serviceName] == nil {
-		hc.m[serviceName] = make(map[string]func(ctx context.Context, c *app.RequestContext))
-	}
-	handler, ok := hc.m[serviceName][methodName]
-	return handler, ok
-}
-
-func (hc *handlerCache) save(serviceName, methodName string, handler func(ctx context.Context, c *app.RequestContext)) {
-	if hc.m == nil {
-		hc.m = make(map[string]map[string]func(ctx context.Context, c *app.RequestContext))
-	}
-	if hc.m[serviceName] == nil {
-		hc.m[serviceName] = make(map[string]func(ctx context.Context, c *app.RequestContext))
-	}
-	hc.m[serviceName][methodName] = handler
-}
-
 func (hm *handlerManagerImpl) HandlerForAnnotatedRoutes(httpMethod string) func(ctx context.Context, c *app.RequestContext) {
 	routeManager, err := router.GetRouteManager()
 	if err != nil {
@@ -124,6 +98,34 @@ func (hm *handlerManagerImpl) HandlerForRoute(serviceName, methodName string) fu
 		c.JSON(200, resp)
 	}
 }
+
+
+type handlerCache struct {
+	m map[string]map[string]func(ctx context.Context, c *app.RequestContext)
+}
+
+func (hc *handlerCache) get(serviceName, methodName string) (func(ctx context.Context, c *app.RequestContext), bool) {
+	if hc.m == nil {
+		hc.m = make(map[string]map[string]func(ctx context.Context, c *app.RequestContext))
+	}
+	if hc.m[serviceName] == nil {
+		hc.m[serviceName] = make(map[string]func(ctx context.Context, c *app.RequestContext))
+	}
+	handler, ok := hc.m[serviceName][methodName]
+	return handler, ok
+}
+
+func (hc *handlerCache) save(serviceName, methodName string, handler func(ctx context.Context, c *app.RequestContext)) {
+	if hc.m == nil {
+		hc.m = make(map[string]map[string]func(ctx context.Context, c *app.RequestContext))
+	}
+	if hc.m[serviceName] == nil {
+		hc.m[serviceName] = make(map[string]func(ctx context.Context, c *app.RequestContext))
+	}
+	hc.m[serviceName][methodName] = handler
+}
+
+
 
 type handlerManagerImpl struct{}
 
