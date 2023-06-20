@@ -7,6 +7,7 @@ import (
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/yiwen101/CardWizards/router"
 	client "github.com/yiwen101/CardWizards/service/clients"
+	"github.com/yiwen101/CardWizards/service/validate"
 )
 
 type HandlerManager interface {
@@ -59,22 +60,19 @@ func (hm *handlerManagerImpl) HandlerForRoute(serviceName, methodName string) (f
 		return nil, err
 	}
 
-	/*
-		validator, err := validate.NewValidatorFor(serviceName, methodName)
-		if err != nil {
-			return nil, err
-		}*/
+	validator, err := validate.NewValidatorFor(serviceName, methodName)
+	if err != nil {
+		return nil, err
+	}
 
 	return func(ctx context.Context, c *app.RequestContext) {
 
-		/*
-			err = validator.ValidateBody(c, serviceName, methodName)
+		err = validator.ValidateBody(c, serviceName, methodName)
 
-			if err != nil {
-				c.String(http.StatusBadRequest, "invalid route: "+err.Error())
-				return
-			}
-		*/
+		if err != nil {
+			c.String(http.StatusBadRequest, "invalid route: "+err.Error())
+			return
+		}
 
 		jsonbytes, err := c.Body()
 		// should not happen, otherwise indicate that there is problem with my validator

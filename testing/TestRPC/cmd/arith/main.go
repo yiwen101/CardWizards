@@ -76,43 +76,22 @@ func (g *GenericServiceImpl) GenericCall(ctx context.Context, method string, req
 		return
 	}
 
-	fmt.Println("strconv.Unquote(string(jsonBytes)) is: %s", str)
-	fmt.Println("strconv.Unquote(string(jsonBytes)) is: %s", str)
-	fmt.Println("strconv.Unquote(string(jsonBytes)) is: %s", str)
-	fmt.Println("strconv.Unquote(string(jsonBytes)) is: %s", str)
-	fmt.Println("strconv.Unquote(string(jsonBytes)) is: %s", str)
-
 	var req requestStruct
 	err = json.Unmarshal([]byte(str), &req)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("req is: %v", req)
-	fmt.Println("req is: %v", req)
-	fmt.Println("req is: %v", req)
-	fmt.Println("req is: %v", req)
-	fmt.Println("req is: %v", req)
+
 	var resp responseStruct
-	resp.FirstArguement = 10
-	resp.SecondArguement = 7
-	resp.Result = 17
-	fmt.Println("resp is: %v", resp)
-	fmt.Println("resp is: %v", resp)
-	fmt.Println("resp is: %v", resp)
-	fmt.Println("resp is: %v", resp)
-	fmt.Println("resp is: %v", resp)
+	resp.FirstArguement = req.FirstArguement
+	resp.SecondArguement = req.SecondArguement
+	resp.Result = req.FirstArguement + req.SecondArguement
 	respBytes, err := json.Marshal(resp)
 	if err != nil {
 		return nil, err
 	}
 	result := string(respBytes)
-	fmt.Println("result is: %s", result)
-	fmt.Println("result is: %s", result)
-	fmt.Println("result is: %s", result)
-	fmt.Println("result is: %s", result)
-	fmt.Println("result is: %s", result)
-	return string(respBytes), nil
-	//return "{\"SecondArguement\":7,\"result\":17,\"firstArguement\":10}", nil
+	return result, nil
 
 }
 
