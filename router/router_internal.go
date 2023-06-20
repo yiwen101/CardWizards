@@ -27,7 +27,7 @@ type routeManagerImpl struct {
 }
 
 func (d *Route) GetRoute() (httpMethod string, path string) {
-	path = "/" + d.serviceName + "/" + d.methodName
+	path = "/" + d.ServiceName + "/" + d.MethodName
 	return d.httpMethod, path
 }
 
@@ -69,7 +69,7 @@ func (r *routeManagerImpl) findInCache(req *descriptor.HTTPRequest) (string, str
 	m, ok := r.cache[httpMehtod]
 	if ok {
 		if pair, ok := m[path]; ok {
-			return pair.serviceName, pair.methodName, true
+			return pair.ServiceName, pair.MethodName, true
 		}
 	}
 	return "", "", false
@@ -84,7 +84,7 @@ func (r *routeManagerImpl) saveInCache(httpMehtod, path, serviceName, methodName
 		m = make(map[string]Route)
 		r.cache[httpMehtod] = m
 	}
-	m[path] = Route{serviceName: serviceName, methodName: methodName}
+	m[path] = Route{ServiceName: serviceName, MethodName: methodName}
 }
 
 func (r *routeManagerImpl) buildRequest(c *app.RequestContext, method string) (*descriptor.HTTPRequest, error) {

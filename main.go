@@ -18,7 +18,7 @@ import (
 )
 
 // interface; bindValidator/clients to handler; abstraction; object oriented; single duty, unit testing, configuration, singleManager, singleDatabase, use of ok, err and fatal, common.http as const; // complex feature: use the annotation of the thrift file
-	// intermediate feature: give route at command line
+// intermediate feature: give route at command line; avoid regenerate twice;
 
 func main() {
 	// todo, set up logs and tracer?
@@ -31,13 +31,8 @@ func main() {
 		server.WithHostPorts("127.0.0.1:8080"),
 	)
 
-	register(h)
+	Register(h)
 	h.Spin()
-}
-
-func register(h *server.Hertz) {
-	// register routes
-	registerRoutes(h, generateDefaultToRegists())
 }
 
 type toRegist struct {
@@ -46,8 +41,11 @@ type toRegist struct {
 	handler    func(ctx context.Context, c *app.RequestContext)
 }
 
-func generateToRegists() []toRegist {
-	return append(generateDefaultToRegists(), generateGenericToRegists())
+func generateToRegists() {
+	if tRs != nil {
+		return
+	}
+	tRs = append(generateRegularToRegists(), generateGenericToRegists()...)
 }
 
 func generateGenericToRegists() []toRegist {
@@ -94,20 +92,21 @@ func generateRegularToRegists() []toRegist {
 	ls := make([]toRegist, len(routes))
 
 	for i, route := range routes {
-		http, path := route.GetRoute(),
+		http, path := route.GetRoute()
 		toRegist := toRegist{
 			httpMethod: http,
-			path:      path,
-			handler:    hm.HandlerForRoute(route.ServiceName, route.Method),
+			path:       path,
+			handler:    hm.HandlerForRoute(route.ServiceName, route.MethodName),
 		}
 		ls[i] = toRegist
 	}
-
-
+	return ls
 }
 
+var tRs []toRegist
 
-func registerRoutes(r *server.Hertz, tRs []toRegist) {
+func Register(r *server.Hertz) {
+	generateToRegists()
 
 	for _, tR := range tRs {
 		switch tR.httpMethod {

@@ -54,8 +54,8 @@ func (r *routeManagerImpl) GetRoutes() ([]Route, error) {
 		for _, methodName := range methods {
 			route := Route{
 				httpMethod:  "POST",
-				serviceName: serviceName,
-				methodName:  methodName,
+				ServiceName: serviceName,
+				MethodName:  methodName,
 			}
 			routes = append(routes, route)
 		}
