@@ -3,7 +3,6 @@ package validate
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/kitex/pkg/generic/descriptor"
@@ -135,10 +134,7 @@ func treatJsonBody(c *app.RequestContext) (map[string]interface{}, error) {
 
 	err := json.Unmarshal(b, &j)
 	if err != nil {
-		log.Println("error unmarshalling json body, here")
 		return nil, err
-	} else {
-		log.Println("json body unmarshalled successfully")
 	}
 	return j, nil
 }

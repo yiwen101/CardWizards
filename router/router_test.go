@@ -6,13 +6,14 @@ import (
 
 	"github.com/cloudwego/kitex/pkg/generic"
 	"github.com/cloudwego/thriftgo/pkg/test"
+	"github.com/yiwen101/CardWizards/common"
 	"github.com/yiwen101/CardWizards/common/descriptor"
 )
 
 /* tested: GetRouteManager, isAnnotatedRoute, Getroute */
 func TestValidateAnnotatedRoutes(t *testing.T) {
 	// initialise descriptor manager, which this module depend on
-	descriptor.BuildDescriptorManager("../IDL")
+	descriptor.BuildDescriptorManager(common.RelativePathToIDLFromTest2)
 	dm, err := descriptor.GetDescriptorManager()
 	test.Assert(t, err == nil)
 
@@ -43,7 +44,7 @@ func TestValidateAnnotatedRoutes(t *testing.T) {
 }
 
 func TestBuildAndGetRoutes(t *testing.T) {
-	descriptor.BuildDescriptorManager("../IDL")
+	descriptor.BuildDescriptorManager(common.RelativePathToIDLFromTest2)
 
 	rmTemp, err := GetRouteManager()
 	test.Assert(t, err == nil)

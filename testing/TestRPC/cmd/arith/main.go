@@ -10,13 +10,14 @@ import (
 	"github.com/cloudwego/kitex/server"
 	"github.com/cloudwego/kitex/server/genericserver"
 	"github.com/kitex-contrib/registry-nacos/registry"
-	arithmatic "github.com/yiwen101/CardWizards/TestRPC/kitex_gen/arithmatic"
+	//arithmatic "github.com/yiwen101/CardWizards/TestRPC/kitex_gen/arithmatic"
 	//calculator "github.com/yiwen101/CardWizards/TestRPC/kitex_gen/arithmatic/arithmatic"
 )
 
 // CalculatorImpl implements the last service interface defined in the IDL.
 type CalculatorImpl struct{}
 
+/*
 // Add implements the CalculatorImpl interface.
 func (s *CalculatorImpl) Add(ctx context.Context, request *arithmatic.Request) (resp *arithmatic.Response, err error) {
 	// TODO: Your code here...
@@ -45,6 +46,7 @@ func (s *CalculatorImpl) TestValidator(ctx context.Context, request *arithmatic.
 	// TODO: Your code here...
 	return &arithmatic.Response{FirstArguement: 17, SecondArguement: 17, Result_: 17}, nil
 }
+*/
 
 type GenericServiceImpl struct {
 }
@@ -77,7 +79,7 @@ func (g *GenericServiceImpl) GenericCall(ctx context.Context, method string, req
 
 func main() {
 
-	p, err := generic.NewThriftFileProvider("arithmatic.thrift", "../../../IDL")
+	p, err := generic.NewThriftFileProvider("arithmatic.thrift", "../../../idl")
 	if err != nil {
 		panic(err)
 	}
