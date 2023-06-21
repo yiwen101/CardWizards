@@ -1,7 +1,7 @@
 # Prerequisites
 - Install Kitex. Instructions can be found [here](https://github.com/cloudwego/kitex).
 - Install Hertz. Instructions can be found [here](https://github.com/cloudwego/hertz).
-- Make sure that your kitex server is configured with server options for supporting generic calls and service registry with Nacos. This helps for json-thrift genericCall and service registry.
+- Make sure that your kitex server run with server options for supporting jsonThrift generic calls and service registry with Nacos. Details here: [json-thrift genericCall](https://www.cloudwego.io/docs/kitex/tutorials/advanced-feature/generic-call), [service registry](https://github.com/kitex-contrib/registry-nacos)
 - Run Nacos. The easiest way is to run it in a docker container using the image `nacos/nacos-server:2.0.3`. Use `centralx/nacos-server` instead if your chip is ARM.
 
 # How to use the Gateway
