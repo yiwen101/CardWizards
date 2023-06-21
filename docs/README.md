@@ -7,7 +7,7 @@
 # How to use the Gateway
 1. Put the thrift files for the RPC server in the IDL folder that can be seen at the root directory of the project.
 
-![Image 1](../images/image%201.png)
+                               ![Image 1](../images/image%201.png)
 
 Please do not create a subdirectory inside the IDL folder and/or change the project structure, or the gateway app might not be able to read the files. 
 
@@ -41,11 +41,11 @@ Then the Add method will also be registered at `Get localhost:8080/arith/add`.
 
 - The call to `/arith/add` under GET method is also successful, as it is a customized route as annotated in the IDL file.
   
-![Image 6](../images/image%206.png)
+![Image 7](../images/image%207.png)
 
 - A case with no matching route.
  
- ![Image 7](../images/image%207.png)
+ ![Image 6](../images/image%206.png)
 
 
 ## Parameter Validation and RPC Call
