@@ -7,7 +7,7 @@
 # How to use the Gateway
 1. Put the thrift files for the RPC server in the IDL folder that can be seen at the root directory of the project.
 
-                               ![Image 1](../images/image%201.png)
+![Image 1](../images/image%201.png)
 
 Please do not create a subdirectory inside the IDL folder and/or change the project structure, or the gateway app might not be able to read the files. 
 
