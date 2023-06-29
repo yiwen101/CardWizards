@@ -85,7 +85,19 @@ func (g *GenericServiceImpl) GenericCall(ctx context.Context, method string, req
 	var resp responseStruct
 	resp.FirstArguement = req.FirstArguement
 	resp.SecondArguement = req.SecondArguement
-	resp.Result = req.FirstArguement + req.SecondArguement
+	switch method {
+	case "Add":
+		resp.Result = req.FirstArguement + req.SecondArguement
+	case "Subtract":
+		resp.Result = req.FirstArguement - req.SecondArguement
+	case "Multiply":
+		resp.Result = req.FirstArguement * req.SecondArguement
+	case "Divide":
+		resp.Result = req.FirstArguement / req.SecondArguement
+	case "TestValidator":
+		resp.Result = 0
+	}
+
 	respBytes, err := json.Marshal(resp)
 	if err != nil {
 		return nil, err
