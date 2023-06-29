@@ -90,7 +90,7 @@ func (r *routeManagerImpl) saveInCache(httpMehtod, path, serviceName, methodName
 func (r *routeManagerImpl) buildRequest(c *app.RequestContext, method string) (*descriptor.HTTPRequest, error) {
 	httpReq, err := http.NewRequest(method, c.Request.URI().String(), bytes.NewBuffer(c.Request.Body()))
 	if err != nil {
-		return nil, err
+		return nil, err 
 	}
 
 	// 将http request转换成generic request

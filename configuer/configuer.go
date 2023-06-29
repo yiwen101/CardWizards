@@ -2,6 +2,7 @@ package configuer
 
 import (
 	"context"
+	"flag"
 	"log"
 	"net/http"
 
@@ -141,9 +142,12 @@ func Register(r *server.Hertz) {
 	log.Println("routes and handlers registered to the server")
 }
 
+var useFolder = flag.String("useFolder", "./IDL", "relative path to IDL folder")
+
 func Load() {
-	descriptor.BuildDescriptorManager("./IDL")
-	clients.BuildGenericClients("./IDL")
+	flag.Parse()
+	descriptor.BuildDescriptorManager(*useFolder)
+	clients.BuildGenericClients(*useFolder)
 }
 
 // Option, customised routes? annotated routes?

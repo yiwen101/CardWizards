@@ -46,7 +46,6 @@ func TestValidateBody(t *testing.T) {
 	test.Assert(t, err != nil)
 
 	//test whether could validate nested struct like such:
-
 	/*
 						struct testValidator {
 					    1: Request recur
@@ -57,7 +56,6 @@ func TestValidateBody(t *testing.T) {
 
 		where type "Request" is the same as the one above
 	*/
-
 	finalTestDescriptor, err := dm.GetFunctionDescriptor("arithmetic", "TestValidator")
 	test.Assert(t, err == nil)
 	finalTest := map[string]interface{}{"recur": goodJsonBody, "extra": map[string]string{"key": "value"}}
