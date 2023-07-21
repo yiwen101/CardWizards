@@ -113,5 +113,6 @@ func GetRouteManager() (RouteManager, error) {
 	}
 	cache := make(map[string]map[string]Route)
 	routers := dm.GetRouters()
-	return &routeManagerImpl{dm: dm, store: store.MetaStore, cache: cache, routers: routers, route: nil}, nil
+	routeManager = &routeManagerImpl{dm: dm, store: store.MetaStore, cache: cache, routers: routers, route: nil}
+	return routeManager, nil
 }

@@ -11,6 +11,7 @@ type RouteManager interface {
 	InitRoute() error
 	//UpdateRoute()
 	GetRoute(path string) (string, string, bool)
+	Get() map[string]api
 }
 
 /*
@@ -71,4 +72,8 @@ func (r *routeManagerImpl) GetRoute(path string) (string, string, bool) {
 		return "", "", false
 	}
 	return api.serviceName, api.methodName, true
+}
+
+func (r *routeManagerImpl) Get() map[string]api {
+	return r.route
 }

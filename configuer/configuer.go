@@ -2,6 +2,7 @@ package configuer
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"log"
 	"net/http"
@@ -22,6 +23,7 @@ type toRegist struct {
 	handler    func(ctx context.Context, c *app.RequestContext)
 }
 
+/*
 func generateToRegists() error {
 	if tRs != nil {
 		return nil
@@ -40,6 +42,7 @@ func generateToRegists() error {
 	tRs = append(ls1, ls2...)
 	return nil
 }
+*/
 
 func generateGenericToRegists() ([]toRegist, error) {
 	hm, err := service.GetHandlerManager()
@@ -70,6 +73,7 @@ func generateGenericToRegists() ([]toRegist, error) {
 	// complex feature: use the annotation of the thrift file
 }
 
+/*
 func generateRegularToRegists() ([]toRegist, error) {
 	hm, err := service.GetHandlerManager()
 	if err != nil {
@@ -104,54 +108,61 @@ func generateRegularToRegists() ([]toRegist, error) {
 	}
 	return ls, nil
 }
+*/
 
-var tRs []toRegist
+func generalHandler(ctx context.Context, c *app.RequestContext) {
+	path := c.URI().Path()
+	pathStr := string(path)
+	wildCard := c.Param("path")
+
+	routeManager, err := router.GetRouteManager()
+	if err != nil {
+		hlog.Fatal("Internal Server Error in getting the route manager: ", err)
+	}
+	service, method, ok := routeManager.GetRoute(pathStr)
+	if !ok {
+		c.String(http.StatusBadRequest, "invalid route: "+pathStr+"\n")
+	}
+
+	c.String(http.StatusOK, "received, wildcard is: "+wildCard+"rest : "+pathStr+" "+service+" "+method+"\n")
+
+	a := routeManager.Get()
+	serviceList := ""
+	for k := range a {
+		serviceList += " " + k
+	}
+	c.String(http.StatusOK, "service list: "+serviceList+"\n")
+
+}
 
 func Register(r *server.Hertz) {
-	generateToRegists()
+	// todo: other http methods
 
-	for _, tR := range tRs {
-		switch tR.httpMethod {
-		case http.MethodGet:
-			r.GET(tR.path, tR.handler)
-			continue
-		case http.MethodPost:
-			r.POST(tR.path, tR.handler)
-			continue
-		case http.MethodPut:
-			r.PUT(tR.path, tR.handler)
-			continue
-		case http.MethodDelete:
-			r.DELETE(tR.path, tR.handler)
-			continue
-		case http.MethodPatch:
-			r.PATCH(tR.path, tR.handler)
-			continue
-		case http.MethodHead:
-			r.HEAD(tR.path, tR.handler)
-			continue
-		case http.MethodOptions:
-			r.OPTIONS(tR.path, tR.handler)
-			continue
-		default:
-			log.Println(" unsupported http method, invalid route ")
-			continue
-		}
-	}
+	r.PUT("/*path", generalHandler)
 
 	type update struct {
-		serviceName string
-		fileName    string
-		dir         string
+		ServiceName string
+		FileName    string
+		Dir         string
 	}
 	r.PUT("/update", func(ctx context.Context, c *app.RequestContext) {
-		update := update{}
-		err := c.BindAndValidate(&update)
+		jsonbytes, err := c.Body()
 		if err != nil {
 			c.String(http.StatusBadRequest, "invalid body: "+err.Error())
 			return
 		}
-		err = clients.ClientManager.UpdateClient(update.serviceName, update.fileName, update.dir)
+		jsonStr := string(jsonbytes)
+		c.String(http.StatusOK, "received: "+jsonStr)
+
+		update := update{}
+
+		err = json.Unmarshal(jsonbytes, &update)
+		if err != nil {
+			c.String(http.StatusBadRequest, "unmarshalError: "+err.Error())
+			return
+		}
+
+		err = clients.ClientManager.UpdateClient(update.ServiceName, update.FileName, update.Dir)
 		if err != nil {
 			c.String(http.StatusInternalServerError, "Internal Server Error in updating the client: "+err.Error())
 			return
@@ -168,6 +179,31 @@ func Load() {
 	flag.Parse()
 	descriptor.BuildDescriptorManager(*useFolder)
 	clients.BuildGenericClients(*useFolder)
+
+	routeManager, err := router.GetRouteManager()
+	if err != nil {
+		hlog.Fatal("Internal Server Error in getting the route manager: ", err)
+	}
+	err = routeManager.InitRoute()
+	if err != nil {
+		hlog.Fatal("Internal Server Error in getting the route manager: ", err)
+	}
+
+	a := routeManager.Get()
+	serviceList := ""
+	for k := range a {
+		serviceList += " " + k
+	}
+	log.Println("service list1: " + serviceList)
+
+	routeManager2, _ := router.GetRouteManager()
+	a = routeManager2.Get()
+	serviceList2 := ""
+	for k := range a {
+		serviceList2 += " " + k
+	}
+	log.Println("service list2: " + serviceList2)
+
 }
 
 // Option, customised routes? annotated routes?
