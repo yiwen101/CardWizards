@@ -2,6 +2,7 @@ package clients
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"sync"
 
@@ -107,10 +108,11 @@ func (cm *clientManager) UpdateClient(serviceName, fileName, includeDir string, 
 }
 
 func buildGenericClientFromPath(serviceName, fileName, includeDir string, opts ...client.Option) (genericclient.Client, error) {
+	pwd, _ := os.Getwd()
 
 	p, err := generic.NewThriftFileProvider(fileName, includeDir)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failure reading thrift files at IDL directory: %s, pwd is %s, parameters are %s, %s", err.Error(), pwd, fileName, includeDir)
 	}
 
 	g, err := generic.JSONThriftGeneric(p)
@@ -126,6 +128,8 @@ func buildGenericClientFromPath(serviceName, fileName, includeDir string, opts .
 	if err != nil {
 		return nil, err
 	}
+
+	log.Printf("client for service %s built, parameters are %s, %s\n", serviceName, fileName, includeDir)
 
 	return client, err
 }

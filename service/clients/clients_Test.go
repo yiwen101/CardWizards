@@ -8,9 +8,6 @@ import (
 	"github.com/yiwen101/CardWizards/common/descriptor"
 )
 
-/*
-tested: GetGenericClientforService, BuildGenericClients, buildGenericClientFromPath
-*/
 func TestBuildGenericClientFromPath(t *testing.T) {
 	filename := "arithmetic.thrift"
 	includeDir := common.RelativePathToIDLFromTest
