@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"net/http"
+	"sync"
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/kitex/pkg/generic"
@@ -20,9 +21,10 @@ type Route struct {
 	MethodName  string
 }
 
-type api struct {
-	methodName  string
-	serviceName string
+type Api struct {
+	MethodName  string
+	ServiceName string
+	IsOn        bool
 }
 
 type routeManagerImpl struct {
@@ -31,7 +33,45 @@ type routeManagerImpl struct {
 	// to update?
 	cache   map[string]map[string]Route
 	routers map[string]descriptor.Router
-	route   map[string]api
+	route   map[string]*mutexMap
+}
+
+type mutexMap struct {
+	m   map[string]*Api
+	mut sync.RWMutex
+}
+
+func (m *mutexMap) get(key string) (*Api, bool) {
+	m.mut.RLock()
+	defer m.mut.RUnlock()
+	v, ok := m.m[key]
+	return v, ok
+}
+
+func (m *mutexMap) delete(key string) error {
+	m.mut.Lock()
+	defer m.mut.Unlock()
+	_, ok := m.m[key]
+	if !ok {
+		return fmt.Errorf("route not found")
+	}
+	delete(m.m, key)
+	return nil
+}
+
+func (m *mutexMap) add(key string, value *Api) error {
+	m.mut.Lock()
+	defer m.mut.Unlock()
+	_, ok := m.m[key]
+	if ok {
+		return fmt.Errorf("route already exists")
+	}
+	m.m[key] = value
+	return nil
+}
+
+func newMutexMap() *mutexMap {
+	return &mutexMap{m: make(map[string]*Api), mut: sync.RWMutex{}}
 }
 
 func (d *Route) GetRoute() (httpMethod string, path string) {

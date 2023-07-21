@@ -1,40 +1,23 @@
 package router
 
 import (
+	"fmt"
+
 	"github.com/cloudwego/hertz/pkg/app"
-	//"github.com/yiwen101/CardWizards/service"
 )
 
 // router is responsible for finding the corresponding service and method according to the request path.
 type RouteManager interface {
 	ValidateRoute(c *app.RequestContext, httpMethod string) (string, string, error)
 	InitRoute() error
-	//UpdateRoute()
-	GetRoute(path string) (string, string, bool)
-	Get() map[string]api
+	AddRoute(method string, url string, newApi *Api) error
+	UpdateRoute(method, url, newMethod, newUrl string) error
+	DeleteRoute(method, path string) error
+	GetRoute(method, path string) (*Api, bool)
+	Get() map[string]*mutexMap
 }
 
-/*
-func GetRouteManager() (RouteManager, error) {
-	if routeManager == nil {
-		rm, err := newRouteManagerImpl()
-		if err != nil {
-			return nil, err
-		}
-		routeManager = rm
-	}
-	return routeManager, nil
-} */
-
 func (r *routeManagerImpl) ValidateRoute(c *app.RequestContext, httpMethod string) (string, string, error) {
-	//serviceName, methodName := c.Param("serviceName"), c.Param("methodName")
-	/*
-		err := r.isGenericRoute(serviceName, methodName)
-		if err == nil {
-			return serviceName, methodName, nil
-		}
-	*/
-
 	req, err := r.buildRequest(c, httpMethod)
 	if err != nil {
 		return "", "", err
@@ -47,7 +30,8 @@ func (r *routeManagerImpl) InitRoute() error {
 		return nil
 	}
 
-	r.route = make(map[string]api)
+	r.route = make(map[string]*mutexMap)
+
 	services, err := r.dm.GetAllServiceNames()
 	if err != nil {
 		return err
@@ -59,21 +43,50 @@ func (r *routeManagerImpl) InitRoute() error {
 		}
 		for _, methodName := range methods {
 			url := "/" + serviceName + "/" + methodName
-			api := api{methodName: methodName, serviceName: serviceName}
-			r.route[url] = api
+			api := Api{MethodName: methodName, ServiceName: serviceName, IsOn: true}
+			r.AddRoute("POST", url, &api)
 		}
 	}
 	return nil
 }
 
-func (r *routeManagerImpl) GetRoute(path string) (string, string, bool) {
-	api, ok := r.route[path]
+func (r *routeManagerImpl) DeleteRoute(method, path string) error {
+	mMap, ok := r.route[method]
 	if !ok {
-		return "", "", false
+		return fmt.Errorf("route does not exist")
 	}
-	return api.serviceName, api.methodName, true
+	return mMap.delete(path)
 }
 
-func (r *routeManagerImpl) Get() map[string]api {
+func (r *routeManagerImpl) GetRoute(method, path string) (*Api, bool) {
+	mMap, ok := r.route[method]
+	if !ok {
+		return nil, false
+	}
+	return mMap.get(path)
+}
+
+func (r *routeManagerImpl) UpdateRoute(method string, url string, newMethod string, newUrl string) error {
+	api, ok := r.GetRoute(method, url)
+	if !ok {
+		return fmt.Errorf("route does not exist")
+	}
+	err := r.DeleteRoute(method, url)
+	if err != nil {
+		return err
+	}
+	return r.AddRoute(newMethod, newUrl, api)
+}
+
+func (r *routeManagerImpl) AddRoute(method string, url string, newApi *Api) error {
+	mMap, ok := r.route[method]
+	if !ok {
+		mMap = newMutexMap()
+		r.route[method] = mMap
+	}
+	return mMap.add(url, newApi)
+}
+
+func (r *routeManagerImpl) Get() map[string]*mutexMap {
 	return r.route
 }

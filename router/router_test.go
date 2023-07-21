@@ -52,9 +52,33 @@ func TestBuildAndGetRoutes(t *testing.T) {
 
 	err = rmTemp.InitRoute()
 	test.Assert(t, err == nil)
-	_, _, ok := rmTemp.GetRoute("/arith/add")
+	_, ok := rmTemp.GetRoute("POST", "/arith/add")
 	test.Assert(t, !ok)
-	s, m, ok := rmTemp.GetRoute("/arithmetic/Add")
+	api, ok := rmTemp.GetRoute("POST", "/arithmetic/Add")
 	test.Assert(t, ok)
-	test.Assert(t, s == "arithmetic" && m == "Add")
+	test.Assert(t, api.ServiceName == "arithmetic" && api.MethodName == "Add")
+}
+
+func TestUpdateAndDeleteRoute(t *testing.T) {
+	descriptor.BuildDescriptorManager(common.RelativePathToIDLFromTest2)
+
+	rmTemp, err := GetRouteManager()
+	test.Assert(t, err == nil)
+	test.Assert(t, rmTemp != nil)
+
+	err = rmTemp.InitRoute()
+	test.Assert(t, err == nil)
+	_, ok := rmTemp.GetRoute("POST", "/arith/add")
+	test.Assert(t, !ok)
+	api, ok := rmTemp.GetRoute("POST", "/arithmetic/Add")
+	test.Assert(t, ok)
+	test.Assert(t, api.ServiceName == "arithmetic" && api.MethodName == "Add")
+	rmTemp.UpdateRoute("POST", "/arithmetic/Add", "GET", "/arith/add")
+	_, ok = rmTemp.GetRoute("POST", "/arithmetic/Add")
+	test.Assert(t, !ok)
+	_, ok = rmTemp.GetRoute("GET", "/arith/add")
+	test.Assert(t, ok)
+	rmTemp.DeleteRoute("GET", "/arith/add")
+	_, ok = rmTemp.GetRoute("GET", "/arith/add")
+	test.Assert(t, !ok)
 }
