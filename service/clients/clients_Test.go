@@ -22,10 +22,10 @@ func TestBuildGenericClientsAndGetGenericClientforService(t *testing.T) {
 	descriptor.BuildDescriptorManager(common.RelativePathToIDLFromTest)
 	err := BuildGenericClients(common.RelativePathToIDLFromTest)
 	test.Assert(t, err == nil)
-	g1, err := GetGenericClientforService("arithmetic")
+	g1, err := ClientManager.GetClient("arithmetic")
 	test.Assert(t, g1 != nil)
 	test.Assert(t, err == nil)
-	g2, err := GetGenericClientforService("arithmetic2")
+	g2, err := ClientManager.GetClient("arithmetic2")
 	test.Assert(t, g2 == nil)
 	test.Assert(t, err != nil)
 }

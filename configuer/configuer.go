@@ -68,7 +68,6 @@ func generateGenericToRegists() ([]toRegist, error) {
 	return ls, nil
 	// todo
 	// complex feature: use the annotation of the thrift file
-	// intermediate feature: give route at command line
 }
 
 func generateRegularToRegists() ([]toRegist, error) {
@@ -139,6 +138,27 @@ func Register(r *server.Hertz) {
 			continue
 		}
 	}
+
+	type update struct {
+		serviceName string
+		fileName    string
+		dir         string
+	}
+	r.PUT("/update", func(ctx context.Context, c *app.RequestContext) {
+		update := update{}
+		err := c.BindAndValidate(&update)
+		if err != nil {
+			c.String(http.StatusBadRequest, "invalid body: "+err.Error())
+			return
+		}
+		err = clients.ClientManager.UpdateClient(update.serviceName, update.fileName, update.dir)
+		if err != nil {
+			c.String(http.StatusInternalServerError, "Internal Server Error in updating the client: "+err.Error())
+			return
+		}
+		c.String(http.StatusOK, "updated")
+	})
+
 	log.Println("routes and handlers registered to the server")
 }
 

@@ -3,6 +3,7 @@ package clients
 import (
 	"fmt"
 	"os"
+	"sync"
 
 	"github.com/cloudwego/kitex/client"
 	"github.com/cloudwego/kitex/client/genericclient"
@@ -13,14 +14,6 @@ import (
 )
 
 var dm desc.DescsManager
-
-func GetGenericClientforService(serviceName string) (genericclient.Client, error) {
-	if client, ok := serviceToClientMap[serviceName]; ok {
-		return client, nil
-	} else {
-		return nil, fmt.Errorf("no client found for service %s", serviceName)
-	}
-}
 
 func BuildGenericClients(relativePath string) error {
 	if serviceToClientMap != nil {
@@ -76,11 +69,42 @@ func BuildGenericClients(relativePath string) error {
 	}
 
 	serviceToClientMap = serviceToClientMapTemp
+	ClientManager = clientManager{
+		mu:                 sync.RWMutex{},
+		serviceToClientMap: serviceToClientMap,
+	}
 
 	return nil
 }
 
 var serviceToClientMap map[string]genericclient.Client
+
+type clientManager struct {
+	mu                 sync.RWMutex
+	serviceToClientMap map[string]genericclient.Client
+}
+
+func (cm *clientManager) GetClient(serviceName string) (genericclient.Client, error) {
+	cm.mu.RLock()
+	defer cm.mu.RUnlock()
+
+	cli, ok := cm.serviceToClientMap[serviceName]
+	if !ok {
+		return nil, fmt.Errorf("no client found for service %s", serviceName)
+	}
+	return cli, nil
+}
+
+func (cm *clientManager) UpdateClient(serviceName, fileName, includeDir string, opts ...client.Option) error {
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
+	cli, err := buildGenericClientFromPath(serviceName, fileName, includeDir, opts...)
+	if err != nil {
+		return err
+	}
+	cm.serviceToClientMap[serviceName] = cli
+	return nil
+}
 
 func buildGenericClientFromPath(serviceName, fileName, includeDir string, opts ...client.Option) (genericclient.Client, error) {
 
@@ -114,3 +138,5 @@ func getServiceRegistryOption(serviceName string) (client.Option, error) {
 
 	return client.WithResolver(nacosResolver), nil
 }
+
+var ClientManager clientManager

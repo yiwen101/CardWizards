@@ -54,18 +54,16 @@ func (hm *handlerManagerImpl) HandlerForAnnotatedRoutes(httpMethod string) (func
 }
 
 func (hm *handlerManagerImpl) HandlerForRoute(serviceName, methodName string) (func(ctx context.Context, c *app.RequestContext), error) {
-
-	cli, err := client.GetGenericClientforService(serviceName)
-	if err != nil {
-		return nil, err
-	}
-
-	validator, err := validate.NewValidatorFor(serviceName, methodName)
-	if err != nil {
-		return nil, err
-	}
-
 	return func(ctx context.Context, c *app.RequestContext) {
+		cli, err := client.ClientManager.GetClient(serviceName)
+		if err != nil {
+			c.String(http.StatusInternalServerError, "Internal Server Error in getting the client: ")
+		}
+
+		validator, err := validate.NewValidatorFor(serviceName, methodName)
+		if err != nil {
+			c.String(http.StatusInternalServerError, "Internal Server Error in getting the validator: "+err.Error())
+		}
 
 		err = validator.ValidateBody(c, serviceName, methodName)
 
