@@ -2,6 +2,7 @@ package router
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/cloudwego/hertz/pkg/app"
 )
@@ -44,7 +45,10 @@ func (r *routeManagerImpl) InitRoute() error {
 		for _, methodName := range methods {
 			url := "/" + serviceName + "/" + methodName
 			api := Api{MethodName: methodName, ServiceName: serviceName, IsOn: true}
-			r.AddRoute("POST", url, &api)
+			err = r.AddRoute("GET", url, &api)
+			if err != nil {
+				log.Fatal(fmt.Errorf("when creating route for " + serviceName + " " + methodName + ": " + err.Error()))
+			}
 		}
 	}
 	return nil

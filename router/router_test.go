@@ -14,17 +14,18 @@ import (
 func TestValidateAnnotatedRoutes(t *testing.T) {
 	// initialise descriptor manager, which this module depend on
 	descriptor.BuildDescriptorManager(common.RelativePathToIDLFromTest2)
-	dm, err := descriptor.GetDescriptorManager()
-	test.Assert(t, err == nil)
+	//dm, err := descriptor.GetDescriptorManager()
+	//test.Assert(t, err == nil)
 
 	// test GetRouteManager
 	rmTemp, err := GetRouteManager()
+	rmTemp.InitRoute()
 	test.Assert(t, err == nil)
 	test.Assert(t, rmTemp != nil)
 
 	// service name is arithmetic, method name is Add, but annotated path is /arith/add
 	//Response Add(1: Request request ) ( api.get = "/arith/add" )
-	rm := routeManagerImpl{dm: dm}
+	rm := rmTemp.(*routeManagerImpl)
 
 	httpReq, err := http.NewRequest("GET", "/arithmetic/Add", nil)
 	test.Assert(t, err == nil)
@@ -54,7 +55,7 @@ func TestBuildAndGetRoutes(t *testing.T) {
 	test.Assert(t, err == nil)
 	_, ok := rmTemp.GetRoute("POST", "/arith/add")
 	test.Assert(t, !ok)
-	api, ok := rmTemp.GetRoute("POST", "/arithmetic/Add")
+	api, ok := rmTemp.GetRoute("GET", "/arithmetic/Add")
 	test.Assert(t, ok)
 	test.Assert(t, api.ServiceName == "arithmetic" && api.MethodName == "Add")
 }
@@ -70,11 +71,11 @@ func TestUpdateAndDeleteRoute(t *testing.T) {
 	test.Assert(t, err == nil)
 	_, ok := rmTemp.GetRoute("POST", "/arith/add")
 	test.Assert(t, !ok)
-	api, ok := rmTemp.GetRoute("POST", "/arithmetic/Add")
+	api, ok := rmTemp.GetRoute("GET", "/arithmetic/Add")
 	test.Assert(t, ok)
 	test.Assert(t, api.ServiceName == "arithmetic" && api.MethodName == "Add")
-	rmTemp.UpdateRoute("POST", "/arithmetic/Add", "GET", "/arith/add")
-	_, ok = rmTemp.GetRoute("POST", "/arithmetic/Add")
+	rmTemp.UpdateRoute("GET", "/arithmetic/Add", "GET", "/arith/add")
+	_, ok = rmTemp.GetRoute("GET", "/arithmetic/Add")
 	test.Assert(t, !ok)
 	_, ok = rmTemp.GetRoute("GET", "/arith/add")
 	test.Assert(t, ok)

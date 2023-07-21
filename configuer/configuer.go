@@ -111,34 +111,37 @@ func generateRegularToRegists() ([]toRegist, error) {
 */
 
 func generalHandler(ctx context.Context, c *app.RequestContext) {
-	path := c.URI().Path()
-	pathStr := string(path)
-	wildCard := c.Param("path")
+	path := string(c.URI().Path())
+	method := string(c.Method())
+	c.String(http.StatusOK, "received: "+method+"\n")
 
 	routeManager, err := router.GetRouteManager()
 	if err != nil {
 		hlog.Fatal("Internal Server Error in getting the route manager: ", err)
 	}
-	service, method, ok := routeManager.GetRoute(pathStr)
+	api, ok := routeManager.GetRoute(method, path)
 	if !ok {
-		c.String(http.StatusBadRequest, "invalid route: "+pathStr+"\n")
+		c.String(http.StatusBadRequest, "invalid route: "+path+"\n")
+		return
 	}
 
-	c.String(http.StatusOK, "received, wildcard is: "+wildCard+"rest : "+pathStr+" "+service+" "+method+"\n")
-
-	a := routeManager.Get()
-	serviceList := ""
-	for k := range a {
-		serviceList += " " + k
+	hm, err := service.GetHandlerManager()
+	if err != nil {
+		hlog.Fatal("Internal Server Error in getting the handler manager: ", err)
 	}
-	c.String(http.StatusOK, "service list: "+serviceList+"\n")
 
+	f, err := hm.HandlerForRoute(api.ServiceName, api.MethodName)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Internal Server Error in getting the handler: "+err.Error())
+		return
+	}
+	f(ctx, c)
 }
 
 func Register(r *server.Hertz) {
 	// todo: other http methods
 
-	r.PUT("/*path", generalHandler)
+	r.Any("/*path", generalHandler)
 
 	type update struct {
 		ServiceName string
@@ -188,21 +191,6 @@ func Load() {
 	if err != nil {
 		hlog.Fatal("Internal Server Error in getting the route manager: ", err)
 	}
-
-	a := routeManager.Get()
-	serviceList := ""
-	for k := range a {
-		serviceList += " " + k
-	}
-	log.Println("service list1: " + serviceList)
-
-	routeManager2, _ := router.GetRouteManager()
-	a = routeManager2.Get()
-	serviceList2 := ""
-	for k := range a {
-		serviceList2 += " " + k
-	}
-	log.Println("service list2: " + serviceList2)
 
 }
 
