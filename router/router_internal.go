@@ -9,10 +9,10 @@ import (
 	"github.com/cloudwego/kitex/pkg/generic"
 	"github.com/cloudwego/kitex/pkg/generic/descriptor"
 	desc "github.com/yiwen101/CardWizards/common/descriptor"
+	"github.com/yiwen101/CardWizards/pkg/store"
 )
 
-var routeManager RouteManager
-var routes []Route
+var routeManager *routeManagerImpl
 
 type Route struct {
 	httpMethod  string
@@ -20,10 +20,18 @@ type Route struct {
 	MethodName  string
 }
 
+type api struct {
+	methodName  string
+	serviceName string
+}
+
 type routeManagerImpl struct {
-	dm      desc.DescsManager
+	store store.Store
+	dm    desc.DescsManager
+	// to update?
 	cache   map[string]map[string]Route
 	routers map[string]descriptor.Router
+	route   map[string]api
 }
 
 func (d *Route) GetRoute() (httpMethod string, path string) {
@@ -44,10 +52,6 @@ func (r *routeManagerImpl) isGenericRoute(serviceName, methodName string) error 
 */
 
 func (r *routeManagerImpl) isAnnotatedRoute(req *descriptor.HTTPRequest) (string, string, error) {
-	if r.routers == nil {
-		r.routers = r.dm.GetRouters()
-	}
-
 	serviceName, methodName, ok := r.findInCache(req)
 	if ok {
 		return serviceName, methodName, nil
@@ -76,9 +80,6 @@ func (r *routeManagerImpl) findInCache(req *descriptor.HTTPRequest) (string, str
 }
 
 func (r *routeManagerImpl) saveInCache(httpMehtod, path, serviceName, methodName string) {
-	if r.cache == nil {
-		r.cache = make(map[string]map[string]Route)
-	}
 	m, ok := r.cache[httpMehtod]
 	if !ok {
 		m = make(map[string]Route)
@@ -90,7 +91,7 @@ func (r *routeManagerImpl) saveInCache(httpMehtod, path, serviceName, methodName
 func (r *routeManagerImpl) buildRequest(c *app.RequestContext, method string) (*descriptor.HTTPRequest, error) {
 	httpReq, err := http.NewRequest(method, c.Request.URI().String(), bytes.NewBuffer(c.Request.Body()))
 	if err != nil {
-		return nil, err 
+		return nil, err
 	}
 
 	// 将http request转换成generic request
@@ -101,10 +102,16 @@ func (r *routeManagerImpl) buildRequest(c *app.RequestContext, method string) (*
 	return customReq, nil
 }
 
-func newRouteManagerImpl() (RouteManager, error) {
+func GetRouteManager() (RouteManager, error) {
+	if routeManager != nil {
+		return routeManager, nil
+	}
+
 	dm, err := desc.GetDescriptorManager()
 	if err != nil {
 		return nil, err
 	}
-	return &routeManagerImpl{dm: dm}, nil
+	cache := make(map[string]map[string]Route)
+	routers := dm.GetRouters()
+	return &routeManagerImpl{dm: dm, store: store.MetaStore, cache: cache, routers: routers, route: nil}, nil
 }

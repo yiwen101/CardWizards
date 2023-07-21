@@ -50,7 +50,11 @@ func TestBuildAndGetRoutes(t *testing.T) {
 	test.Assert(t, err == nil)
 	test.Assert(t, rmTemp != nil)
 
-	routes, err := rmTemp.BuildAndGetRoute()
+	err = rmTemp.InitRoute()
 	test.Assert(t, err == nil)
-	test.Assert(t, len(routes) > 0)
+	_, _, ok := rmTemp.GetRoute("/arith/add")
+	test.Assert(t, !ok)
+	s, m, ok := rmTemp.GetRoute("/arithmetic/Add")
+	test.Assert(t, ok)
+	test.Assert(t, s == "arithmetic" && m == "Add")
 }
