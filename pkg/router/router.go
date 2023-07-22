@@ -2,7 +2,6 @@ package router
 
 import (
 	"fmt"
-	"sync"
 
 	"github.com/yiwen101/CardWizards/pkg/store"
 	"github.com/yiwen101/CardWizards/pkg/utils"
@@ -15,7 +14,7 @@ func GetRoute(method, url string) (*RouteData, bool) {
 	if !ok {
 		return nil, false
 	}
-	return localStore[method].get(url)
+	return localStore[method].Get(url)
 }
 
 func AddRoute(method, url string, data *RouteData) error {
@@ -23,7 +22,7 @@ func AddRoute(method, url string, data *RouteData) error {
 	if !ok {
 		return fmt.Errorf("invalid http method, received %s", method)
 	}
-	return localStore[method].add(url, data)
+	return localStore[method].Add(url, data)
 }
 
 func DeleteRoute(method, url string) error {
@@ -31,7 +30,7 @@ func DeleteRoute(method, url string) error {
 	if !ok {
 		return fmt.Errorf("invalid http method, received %s", method)
 	}
-	return localStore[method].delete(url)
+	return localStore[method].Delete(url)
 }
 
 func UpdateRoute(method, url, newMethod, newUrl string) error {
@@ -46,27 +45,17 @@ func UpdateRoute(method, url, newMethod, newUrl string) error {
 	return AddRoute(newMethod, newUrl, data)
 }
 
-var localStore map[string]*mutexMap
+var localStore map[string]*utils.MutexMap[string, *RouteData]
 
 func init() {
-	localStore = make(map[string]*mutexMap)
+	localStore = make(map[string]*utils.MutexMap[string, *RouteData])
 	httpMethods := utils.HTTPMethods()
 	for _, method := range httpMethods {
-		localStore[method] = newMutexMap()
+		localStore[method] = utils.NewMutexMap[string, *RouteData]()
 	}
 
-	store.InfoStore.RegisterApiRouteListener(&aPIrouteHandeler{})
+	store.InfoStore.RegisterApiRouteListener(&methodRouteHandeler{})
 	store.InfoStore.RegisterServiceMapListener(&serviceRouteHandeler{})
-}
-
-type mutexMap struct {
-	// url -> arguements
-	m   map[string]*RouteData
-	mut sync.RWMutex
-}
-
-func newMutexMap() *mutexMap {
-	return &mutexMap{m: make(map[string]*RouteData), mut: sync.RWMutex{}}
 }
 
 type RouteData struct {
@@ -74,39 +63,10 @@ type RouteData struct {
 	ServiceName string
 }
 
-func (m *mutexMap) get(key string) (*RouteData, bool) {
-	m.mut.RLock()
-	defer m.mut.RUnlock()
-	v, ok := m.m[key]
-	return v, ok
-}
-
-func (m *mutexMap) delete(key string) error {
-	m.mut.Lock()
-	defer m.mut.Unlock()
-	_, ok := m.m[key]
-	if !ok {
-		return fmt.Errorf("route not found")
-	}
-	delete(m.m, key)
-	return nil
-}
-
-func (m *mutexMap) add(key string, value *RouteData) error {
-	m.mut.Lock()
-	defer m.mut.Unlock()
-	_, ok := m.m[key]
-	if ok {
-		return fmt.Errorf("route already exists")
-	}
-	m.m[key] = value
-	return nil
-}
-
-type aPIrouteHandeler struct{}
+type methodRouteHandeler struct{}
 
 // serviceName, methodName, url, httpMethod, isAdd?
-func (rh *aPIrouteHandeler) OnStatechanged(data ...interface{}) error {
+func (rh *methodRouteHandeler) OnStatechanged(data ...interface{}) error {
 	serviceName := data[0].(string)
 	methodName := data[1].(string)
 	url := data[2].(string)
