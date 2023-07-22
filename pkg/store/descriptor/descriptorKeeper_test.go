@@ -4,12 +4,12 @@ import (
 	"testing"
 
 	"github.com/cloudwego/thriftgo/pkg/test"
-	"github.com/yiwen101/CardWizards/common"
+	"github.com/yiwen101/CardWizards/pkg/utils"
 )
 
 func TestDescriptorKeeper(t *testing.T) {
 	filename := "http.thrift"
-	includeDir := common.RelativePathToIDLFromTest
+	includeDir := utils.RelativePathToIDLFromTest
 	d, err := buildDescriptorKeeperFromPath(filename, includeDir)
 	test.Assert(t, err == nil)
 

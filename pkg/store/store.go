@@ -49,14 +49,18 @@ var (
 func init() {
 
 	InfoStore = &Store{
-		mutex:                 sync.RWMutex{},
-		IsOn:                  false,
-		proxyStateListeners:   []EventListener{},
-		ServicesMap:           map[string]*ServiceMeta{},
-		ServiceMapListeners:   []EventListener{},
-		ProxyAddress:          "",
-		StoreAddress:          "",
-		IdlFolderRelativePath: "../../IDL",
+		mutex:                  sync.RWMutex{},
+		IsOn:                   false,
+		proxyStateListeners:    []EventListener{},
+		ServiceMapListeners:    []EventListener{},
+		apiStateListeners:      []EventListener{},
+		apiValidationListeners: []EventListener{},
+		apiRouteListeners:      []EventListener{},
+		lbStateListners:        []EventListener{},
+		ServicesMap:            map[string]*ServiceMeta{},
+		ProxyAddress:           "",
+		StoreAddress:           "",
+		IdlFolderRelativePath:  "../../IDL",
 	}
 }
 
@@ -96,10 +100,16 @@ func (s *Store) Load(ProxyAddress, StoreAddress, IdlFolderRelativePath string) {
 type Store struct {
 	mutex sync.RWMutex
 
-	IsOn                bool
-	proxyStateListeners []EventListener
-	ServicesMap         map[string]*ServiceMeta
-	ServiceMapListeners []EventListener
+	proxyStateListeners    []EventListener
+	ServiceMapListeners    []EventListener
+	apiStateListeners      []EventListener
+	apiValidationListeners []EventListener
+	apiRouteListeners      []EventListener
+	lbStateListners        []EventListener
+
+	IsOn bool
+
+	ServicesMap map[string]*ServiceMeta
 
 	ProxyAddress          string
 	StoreAddress          string
@@ -113,18 +123,12 @@ type ServiceMeta struct {
 	Descriptor *descriptorKeeper
 	LbType     string
 
-	lbStateListners []EventListener
-
-	Apis map[string]*ApiMeta
+	APIs map[string]*ApiMeta
 }
 
 type ApiMeta struct {
 	ServiceName string
 	MethodName  string
-
-	apiStateListeners      []EventListener
-	apiValidationListeners []EventListener
-	apiRouteListeners      []EventListener
 
 	ValidationOn bool
 	// map[httpmethod]map[url]
@@ -138,14 +142,14 @@ func (s *Store) RegisterProxyStateListener(listener EventListener) {
 func (s *Store) RegisterServiceMapListener(listener EventListener) {
 	s.ServiceMapListeners = append(s.ServiceMapListeners, listener)
 }
-func (s *Store) RegisterApiStateListener(serviceName, methodName string, listener EventListener) {
-	s.ServicesMap[serviceName].Apis[methodName].apiStateListeners = append(s.ServicesMap[serviceName].Apis[methodName].apiStateListeners, listener)
+func (s *Store) RegisterApiStateListener(listener EventListener) {
+	s.apiStateListeners = append(s.apiStateListeners, listener)
 }
-func (s *Store) RegisterApiValidationListener(serviceName, methodName string, listener EventListener) {
-	s.ServicesMap[serviceName].Apis[methodName].apiValidationListeners = append(s.ServicesMap[serviceName].Apis[methodName].apiValidationListeners, listener)
+func (s *Store) RegisterApiValidationListener(listener EventListener) {
+	s.apiValidationListeners = append(s.apiValidationListeners, listener)
 }
-func (s *Store) RegisterApiRouteListener(serviceName, methodName string, listener EventListener) {
-	s.ServicesMap[serviceName].Apis[methodName].apiRouteListeners = append(s.ServicesMap[serviceName].Apis[methodName].apiRouteListeners, listener)
+func (s *Store) RegisterApiRouteListener(listener EventListener) {
+	s.apiRouteListeners = append(s.apiRouteListeners, listener)
 }
 
 type EventListener interface {
@@ -206,7 +210,7 @@ func (s *Store) GetAPIs(serviceName string) (map[string]*ApiMeta, error) {
 	if !ok {
 		return nil, fmt.Errorf("service %s not found", serviceName)
 	}
-	return meta.Apis, nil
+	return meta.APIs, nil
 }
 
 func (s *Store) AddService(idlFileName, clusterName string) error {
@@ -248,9 +252,9 @@ func (s *Store) AddService(idlFileName, clusterName string) error {
 		Descriptor:  dk,
 		//todo
 		LbType: "random",
-		Apis:   result,
+		APIs:   result,
 	}
-	notifyStatechange(s.ServiceMapListeners, "add", serviceName)
+	notifyStatechange(s.ServiceMapListeners, true, s.ServicesMap[serviceName])
 	return nil
 }
 
@@ -266,7 +270,7 @@ func (s *Store) RemoveService(serviceName string) error {
 	}
 
 	delete(s.ServicesMap, serviceName)
-	notifyStatechange(s.ServiceMapListeners, "delete", serviceName)
+	notifyStatechange(s.ServiceMapListeners, false, serviceName)
 	return err
 }
 
@@ -279,7 +283,7 @@ func (s *Store) UpdateService(serviceName, idlFileName, clusterName string) erro
 }
 
 func (s *Store) TurnOnService(serviceName string) error {
-	for methodName := range s.ServicesMap[serviceName].Apis {
+	for methodName := range s.ServicesMap[serviceName].APIs {
 		err := s.TurnOnAPI(serviceName, methodName)
 		if err != nil {
 			return err
@@ -289,7 +293,7 @@ func (s *Store) TurnOnService(serviceName string) error {
 }
 
 func (s *Store) TurnOffService(serviceName string) error {
-	for methodName := range s.ServicesMap[serviceName].Apis {
+	for methodName := range s.ServicesMap[serviceName].APIs {
 		err := s.TurnOffAPI(serviceName, methodName)
 		if err != nil {
 			return err
@@ -315,7 +319,7 @@ func (s *Store) CheckAPIStatus(serviceName, methodName string) (*ApiMeta, error)
 	if !ok {
 		return nil, fmt.Errorf("service %s not found", serviceName)
 	}
-	apiMeta, ok := meta.Apis[methodName]
+	apiMeta, ok := meta.APIs[methodName]
 	if !ok {
 		return nil, fmt.Errorf("method %s not found", methodName)
 	}
@@ -331,7 +335,7 @@ func (s *Store) TurnOnAPI(serviceName, methodName string) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	api.IsOn = true
-	notifyStatechange(api.apiStateListeners, serviceName, methodName, true)
+	notifyStatechange(s.apiStateListeners, serviceName, methodName, true)
 	return nil
 }
 
@@ -344,7 +348,7 @@ func (s *Store) TurnOffAPI(serviceName, methodName string) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	api.IsOn = false
-	notifyStatechange(api.apiStateListeners, serviceName, methodName, false)
+	notifyStatechange(s.apiStateListeners, serviceName, methodName, false)
 	return nil
 }
 
@@ -356,7 +360,7 @@ func (s *Store) TurnOnValidation(serviceName, methodName string) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	api.ValidationOn = true
-	notifyStatechange(api.apiValidationListeners, serviceName, methodName, true)
+	notifyStatechange(s.apiValidationListeners, serviceName, methodName, true)
 	return nil
 }
 
@@ -368,7 +372,7 @@ func (s *Store) TurnOffValidation(serviceName, methodName string) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	api.ValidationOn = false
-	notifyStatechange(api.apiValidationListeners, serviceName, methodName, false)
+	notifyStatechange(s.apiValidationListeners, serviceName, methodName, false)
 	return nil
 }
 
@@ -389,7 +393,7 @@ func (s *Store) AddRoute(serviceName, methodName, url, httpMethod string) error 
 		return fmt.Errorf("route %s %s already exists", httpMethod, url)
 	}
 	m[url] = true
-	notifyStatechange(api.apiRouteListeners, serviceName, methodName, url, httpMethod, true)
+	notifyStatechange(s.apiRouteListeners, serviceName, methodName, url, httpMethod, true)
 	return nil
 }
 
@@ -409,8 +413,8 @@ func (s *Store) RemoveRoute(serviceName, methodName, url, httpMethod string) err
 	if !ok {
 		return fmt.Errorf("route %s %s does not exists", httpMethod, url)
 	}
-	delete(s.ServicesMap[serviceName].Apis[methodName].Routes[httpMethod], url)
-	notifyStatechange(api.apiRouteListeners, serviceName, methodName, url, httpMethod, false)
+	delete(s.ServicesMap[serviceName].APIs[methodName].Routes[httpMethod], url)
+	notifyStatechange(s.apiRouteListeners, serviceName, methodName, url, httpMethod, false)
 	return nil
 }
 
@@ -440,7 +444,7 @@ func (s *Store) GetLbType(serviceName string) (string, error) {
 
 func (s *Store) SetLbType(serviceName, lbType string) error {
 	s.mutex.Lock()
-	defer notifyStatechange(s.ServicesMap[serviceName].lbStateListners, serviceName, lbType)
+	defer notifyStatechange(s.lbStateListners, serviceName, lbType)
 	defer s.mutex.Unlock()
 	s.ServicesMap[serviceName].LbType = lbType
 	return nil

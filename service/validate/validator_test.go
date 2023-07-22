@@ -4,13 +4,13 @@ import (
 	"testing"
 
 	"github.com/cloudwego/thriftgo/pkg/test"
-	"github.com/yiwen101/CardWizards/common"
 	"github.com/yiwen101/CardWizards/pkg/store/descriptor"
+	"github.com/yiwen101/CardWizards/pkg/utils"
 )
 
 /* tested: validateBody, NewValidatorFor */
 func TestValidateBody(t *testing.T) {
-	descriptor.BuildDescriptorManager(common.RelativePathToIDLFromTest)
+	descriptor.BuildDescriptorManager(utils.RelativePathToIDLFromTest)
 	dm, err := descriptor.GetDescriptorManager()
 	test.Assert(t, err == nil)
 	arithAddDescriptor, err := dm.GetFunctionDescriptor("arithmetic", "Add")
@@ -65,7 +65,7 @@ func TestValidateBody(t *testing.T) {
 }
 
 func TestNewValidatorFor(t *testing.T) {
-	descriptor.BuildDescriptorManager(common.RelativePathToIDLFromTest)
+	descriptor.BuildDescriptorManager(utils.RelativePathToIDLFromTest)
 	_, err := NewValidatorFor("arithmetic", "Add")
 	test.Assert(t, err == nil)
 	_, err = NewValidatorFor("arithmetic", "Add2")

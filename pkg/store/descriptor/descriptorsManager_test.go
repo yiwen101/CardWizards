@@ -4,11 +4,11 @@ import (
 	"testing"
 
 	"github.com/cloudwego/thriftgo/pkg/test"
-	"github.com/yiwen101/CardWizards/common"
+	"github.com/yiwen101/CardWizards/pkg/utils"
 )
 
 func TestDescriptorsManager(t *testing.T) {
-	BuildDescriptorManager(common.RelativePathToIDLFromTest)
+	BuildDescriptorManager(utils.RelativePathToIDLFromTest)
 	dm, error := GetDescriptorManager()
 	test.Assert(t, error == nil)
 	_, error = dm.GetServiceDescriptor("arithmetic")
@@ -20,7 +20,7 @@ func TestDescriptorsManager(t *testing.T) {
 }
 
 func TestNilRouter(t *testing.T) {
-	BuildDescriptorManager(common.RelativePathToIDLFromTest)
+	BuildDescriptorManager(utils.RelativePathToIDLFromTest)
 	dm, err := GetDescriptorManager()
 	test.Assert(t, err == nil)
 	service, err := dm.GetServiceDescriptor("arithmetic")

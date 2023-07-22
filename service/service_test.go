@@ -6,8 +6,8 @@ import (
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/thriftgo/pkg/test"
-	"github.com/yiwen101/CardWizards/common"
 	"github.com/yiwen101/CardWizards/pkg/store/descriptor"
+	"github.com/yiwen101/CardWizards/pkg/utils"
 	"github.com/yiwen101/CardWizards/service/clients"
 )
 
@@ -28,8 +28,8 @@ func TestHandlerCache(t *testing.T) {
 }
 
 func TestHandlerManager(t *testing.T) {
-	descriptor.BuildDescriptorManager(common.RelativePathToIDLFromTest2)
-	clients.BuildGenericClients(common.RelativePathToIDLFromTest2)
+	descriptor.BuildDescriptorManager(utils.RelativePathToIDLFromTest2)
+	clients.BuildGenericClients(utils.RelativePathToIDLFromTest2)
 	hm, err := GetHandlerManager()
 	test.Assert(t, err == nil)
 	f, err := hm.HandlerForAnnotatedRoutes("GET")

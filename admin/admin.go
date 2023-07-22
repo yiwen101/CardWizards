@@ -9,7 +9,7 @@ import (
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/app/server"
 	"github.com/cloudwego/hertz/pkg/common/hlog"
-	"github.com/yiwen101/CardWizards/common"
+	"github.com/yiwen101/CardWizards/pkg/utils"
 	"github.com/yiwen101/CardWizards/router"
 	"github.com/yiwen101/CardWizards/service"
 	"github.com/yiwen101/CardWizards/service/clients"
@@ -52,7 +52,7 @@ func generateGenericToRegists() ([]toRegist, error) {
 
 	// how to write this as const? since arrays are not constants
 
-	for i, method := range common.HTTPMethods() {
+	for i, method := range utils.HTTPMethods() {
 		handlerFunc, err := hm.HandlerForAnnotatedRoutes(method)
 		if err != nil {
 			log.Fatal("Internal Server Error in getting the handler: ", err)
@@ -61,7 +61,7 @@ func generateGenericToRegists() ([]toRegist, error) {
 
 		tR := toRegist{
 			httpMethod: method,
-			path:       common.GenericPath2,
+			path:       utils.GenericPath2,
 			handler:    handlerFunc,
 		}
 		ls[i] = tR
