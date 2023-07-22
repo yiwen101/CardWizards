@@ -1,9 +1,8 @@
-package configuer
+package admin
 
 import (
 	"context"
 	"encoding/json"
-	"flag"
 	"log"
 	"net/http"
 
@@ -11,7 +10,6 @@ import (
 	"github.com/cloudwego/hertz/pkg/app/server"
 	"github.com/cloudwego/hertz/pkg/common/hlog"
 	"github.com/yiwen101/CardWizards/common"
-	"github.com/yiwen101/CardWizards/common/descriptor"
 	"github.com/yiwen101/CardWizards/router"
 	"github.com/yiwen101/CardWizards/service"
 	"github.com/yiwen101/CardWizards/service/clients"
@@ -174,24 +172,6 @@ func Register(r *server.Hertz) {
 	})
 
 	log.Println("routes and handlers registered to the server")
-}
-
-var useFolder = flag.String("useFolder", "./IDL", "relative path to IDL folder")
-
-func Load() {
-	flag.Parse()
-	descriptor.BuildDescriptorManager(*useFolder)
-	clients.BuildGenericClients(*useFolder)
-
-	routeManager, err := router.GetRouteManager()
-	if err != nil {
-		hlog.Fatal("Internal Server Error in getting the route manager: ", err)
-	}
-	err = routeManager.InitRoute()
-	if err != nil {
-		hlog.Fatal("Internal Server Error in getting the route manager: ", err)
-	}
-
 }
 
 // Option, customised routes? annotated routes?

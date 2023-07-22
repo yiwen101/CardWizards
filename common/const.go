@@ -5,7 +5,7 @@ import "net/http"
 // assign variable "HttpMethods" to a slice of strings representing the http methods
 
 const (
-	RelativePathToIDLFromTest  = "../../testing/idl"
+	RelativePathToIDLFromTest  = "../../../testing/idl"
 	RelativePathToIDLFromTest2 = "../testing/idl"
 	GenericPath1               = "/:serviceName/:methodName/*furtherRoutes"
 	GenericPath2               = "/*route"
