@@ -1,4 +1,4 @@
-package proxyService
+package service
 
 import (
 	"context"
