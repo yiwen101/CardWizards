@@ -16,9 +16,9 @@ type Admin interface {
 	GetStoreAddress() (string, error)
 
 	GetAPIs(serviceName string) (map[string]*ApiMeta, error)
-	AddService(idlFileName, clusterName string) error                 //validator, client, descriptor, router
-	UpdateService(serviceName, idlFileName, clusterName string) error //validator, client, descriptor, router
-	RemoveService(serviceName string) error                           //validator, client, descriptor, router
+	AddService(idlFileName, clusterName string) error                 //validator, caller,  router, APIGate
+	UpdateService(serviceName, idlFileName, clusterName string) error //validator, caller,  router, APIGate
+	RemoveService(serviceName string) error                           //validator, caller,  router, APIGate
 	TurnOnService(serviceName string) error
 	TurnOffService(serviceName string) error
 	GetServiceInfo(serviceName string) (*ServiceMeta, error)
@@ -32,8 +32,8 @@ type Admin interface {
 	ModifyRoute(serviceName, methodName, url, httpMethod, newUrl, newMethod string) error //router
 	RemoveRoute(serviceName, methodName, url, httpMethod string) error                    //router
 	GetRoutes(serviceName, methodName string) (map[string]map[string]bool, error)
-	GetLbType(serviceName string) (string, error) //lb
-	SetLbType(serviceName, lbType string) error   //lb
+	GetLbType(serviceName string) (string, error) //caller
+	SetLbType(serviceName, lbType string) error   //caller
 }
 
 var InfoStore *Store
@@ -50,7 +50,7 @@ func init() {
 
 	InfoStore = &Store{
 		mutex:                  sync.RWMutex{},
-		IsOn:                   false,
+		IsOn:                   true,
 		proxyStateListeners:    []EventListener{},
 		ServiceMapListeners:    []EventListener{},
 		apiStateListeners:      []EventListener{},
@@ -150,6 +150,9 @@ func (s *Store) RegisterApiValidationListener(listener EventListener) {
 }
 func (s *Store) RegisterApiRouteListener(listener EventListener) {
 	s.apiRouteListeners = append(s.apiRouteListeners, listener)
+}
+func (s *Store) RegisterLoadBalanceChoiceListener(listener EventListener) {
+	s.lbStateListners = append(s.lbStateListners, listener)
 }
 
 type EventListener interface {
@@ -251,7 +254,7 @@ func (s *Store) AddService(idlFileName, clusterName string) error {
 		ClusterName: clusterName,
 		Descriptor:  dk,
 		//todo
-		LbType: "random",
+		LbType: "default",
 		APIs:   result,
 	}
 	notifyStatechange(s.ServiceMapListeners, true, s.ServicesMap[serviceName])
@@ -263,14 +266,14 @@ func (s *Store) RemoveService(serviceName string) error {
 	defer s.mutex.Unlock()
 	var err error = nil
 
-	_, ok := s.ServicesMap[serviceName]
+	meta, ok := s.ServicesMap[serviceName]
 	if !ok {
 		err = fmt.Errorf("service %s not found", serviceName)
 		return err
 	}
 
 	delete(s.ServicesMap, serviceName)
-	notifyStatechange(s.ServiceMapListeners, false, serviceName)
+	notifyStatechange(s.ServiceMapListeners, false, meta)
 	return err
 }
 
@@ -439,13 +442,21 @@ func (s *Store) GetRoutes(serviceName, methodName string) (map[string]map[string
 func (s *Store) GetLbType(serviceName string) (string, error) {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
-	return s.ServicesMap[serviceName].LbType, nil
+	meta, ok := s.ServicesMap[serviceName]
+	if !ok {
+		return "", fmt.Errorf("service %s not found", serviceName)
+	}
+	return meta.LbType, nil
 }
 
 func (s *Store) SetLbType(serviceName, lbType string) error {
 	s.mutex.Lock()
-	defer notifyStatechange(s.lbStateListners, serviceName, lbType)
 	defer s.mutex.Unlock()
-	s.ServicesMap[serviceName].LbType = lbType
+	meta, ok := s.ServicesMap[serviceName]
+	if !ok {
+		return fmt.Errorf("service %s not found", serviceName)
+	}
+	meta.LbType = lbType
+	notifyStatechange(s.lbStateListners, meta)
 	return nil
 }

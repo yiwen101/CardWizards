@@ -4,41 +4,47 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/cloudwego/kitex/client"
 	"github.com/cloudwego/kitex/client/genericclient"
 	"github.com/cloudwego/kitex/pkg/generic"
 	"github.com/cloudwego/kitex/pkg/generic/descriptor"
+	"github.com/cloudwego/kitex/pkg/loadbalance"
+	"github.com/kitex-contrib/registry-nacos/resolver"
 	"github.com/yiwen101/CardWizards/pkg/store"
 )
 
-var Caller caller
+var mu sync.RWMutex
+var serviceToClientMap map[string]genericclient.Client
+var options []func(*store.ServiceMeta) (client.Option, error)
 
 func init() {
-	Caller = caller{
-		store:              store.InfoStore,
-		mu:                 sync.RWMutex{},
-		serviceToClientMap: make(map[string]genericclient.Client),
+	mu = sync.RWMutex{}
+	serviceToClientMap = make(map[string]genericclient.Client)
+	options = []func(*store.ServiceMeta) (client.Option, error){
+		getServiceRegistryOption,
+		getServiceLoadBalancerOption,
 	}
-	Caller.store.RegisterServiceMapListener(&serviceChangeHandler{})
+
+	store.InfoStore.RegisterServiceMapListener(&serviceChangeHandler{})
+	store.InfoStore.RegisterLoadBalanceChoiceListener(&lbChangeHandler{})
 }
 
 type serviceChangeHandler struct{}
 
 func (s *serviceChangeHandler) OnStatechanged(data ...interface{}) error {
-	changeType := data[0].(string)
-	serviceName := data[1].(string)
-	if changeType == "add" {
-		return Caller.AddClient(serviceName)
+	isAdd := data[0].(bool)
+	meta := data[1].(*store.ServiceMeta)
+	if isAdd {
+		return mustUpdateClient(meta)
 	}
-	if changeType == "delete" {
-		return Caller.DeleteClient(serviceName)
-	}
-	return fmt.Errorf("unknown change type %s", changeType)
+	return deleteClient(meta)
 }
 
-type caller struct {
-	store              *store.Store
-	mu                 sync.RWMutex
-	serviceToClientMap map[string]genericclient.Client
+type lbChangeHandler struct{}
+
+func (s *lbChangeHandler) OnStatechanged(data ...interface{}) error {
+	meta := data[0].(*store.ServiceMeta)
+	return mustUpdateClient(meta)
 }
 
 type myProvider struct {
@@ -66,20 +72,17 @@ func (p *myProvider) Close() error {
 }
 
 // service name is not file name, but the name of the service in the idl file
-func (c *caller) AddClient(serviceName string) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	meta, err := c.store.GetServiceInfo(serviceName)
-	if err != nil {
-		return err
-	}
+func mustUpdateClient(meta *store.ServiceMeta) error {
+	mu.Lock()
+	defer mu.Unlock()
+
 	decriptor, err := meta.Descriptor.Get()
 	if err != nil {
 		return err
 	}
 	p, err := newMyProvider(decriptor)
 	if err != nil {
-		return fmt.Errorf("error makring myProvider for %s: %s", serviceName, err.Error())
+		return fmt.Errorf("error makring myProvider for %s: %s", meta.ServiceName, err.Error())
 	}
 
 	g, err := generic.JSONThriftGeneric(p)
@@ -87,43 +90,72 @@ func (c *caller) AddClient(serviceName string) error {
 		return err
 	}
 
+	opts, err := getOptionsFor(meta)
+	if err != nil {
+		return err
+	}
+
 	client, err := genericclient.NewClient(
-		serviceName,
+		meta.ServiceName,
 		g,
-		//opts...,
+		opts...,
 	)
 	if err != nil {
 		return err
 	}
-	c.serviceToClientMap[serviceName] = client
+	serviceToClientMap[meta.ServiceName] = client
 
 	return nil
 }
 
-func (c *caller) DeleteClient(serviceName string) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	delete(c.serviceToClientMap, serviceName)
+func deleteClient(meta *store.ServiceMeta) error {
+	mu.Lock()
+	defer mu.Unlock()
+	delete(serviceToClientMap, meta.ServiceName)
 	return nil
 }
 
-/*
-func (c *caller) UpdateClient(serviceName string) error {
-	err := c.DeleteClient(serviceName)
-	if err != nil {
-		return err
-	}
-	return c.AddClient(serviceName)
-}
-*/
-
-func (cm *caller) GetClient(serviceName string) (genericclient.Client, error) {
-	cm.mu.RLock()
-	defer cm.mu.RUnlock()
-
-	cli, ok := cm.serviceToClientMap[serviceName]
+func GetClient(serviceName string) (genericclient.Client, error) {
+	mu.RLock()
+	defer mu.RUnlock()
+	client, ok := serviceToClientMap[serviceName]
 	if !ok {
-		return nil, nil
+		return nil, fmt.Errorf("client not found for service %s", serviceName)
 	}
-	return cli, nil
+	return client, nil
+}
+
+func getOptionsFor(meta *store.ServiceMeta) ([]client.Option, error) {
+	var opts []client.Option
+	for _, optionFunc := range options {
+		option, err := optionFunc(meta)
+		if err != nil {
+			return nil, err
+		}
+		opts = append(opts, option)
+	}
+	return opts, nil
+}
+
+func getServiceRegistryOption(meta *store.ServiceMeta) (client.Option, error) {
+	nacosResolver, err := resolver.NewDefaultNacosResolver()
+	if err != nil {
+		return client.Option{}, err
+	}
+
+	return client.WithResolver(nacosResolver), nil
+}
+
+func getServiceLoadBalancerOption(meta *store.ServiceMeta) (client.Option, error) {
+	lbChoice := meta.LbType
+	switch lbChoice {
+	case "default":
+		return client.WithLoadBalancer(loadbalance.NewWeightedBalancer()), nil
+	case "random":
+		return client.WithLoadBalancer(loadbalance.NewWeightedRandomBalancer()), nil
+	case "roundrobin":
+		return client.WithLoadBalancer(loadbalance.NewWeightedRoundRobinBalancer()), nil
+	default:
+		return client.Option{}, fmt.Errorf("load balance choice %s not supported", lbChoice)
+	}
 }
