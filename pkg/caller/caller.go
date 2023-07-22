@@ -1,25 +1,31 @@
 package caller
 
+/*
+This package is about offering the right generic client. This class should only be responsible for keeping clients
+up to date, for example when update the api by uploading a new idl file, or updating the load balance choice
+*/
+
 import (
+	"context"
 	"fmt"
 	"sync"
 
 	"github.com/cloudwego/kitex/client"
+	"github.com/cloudwego/kitex/client/callopt"
 	"github.com/cloudwego/kitex/client/genericclient"
 	"github.com/cloudwego/kitex/pkg/generic"
 	"github.com/cloudwego/kitex/pkg/generic/descriptor"
 	"github.com/cloudwego/kitex/pkg/loadbalance"
 	"github.com/kitex-contrib/registry-nacos/resolver"
 	"github.com/yiwen101/CardWizards/pkg/store"
+	"github.com/yiwen101/CardWizards/pkg/utils"
 )
 
-var mu sync.RWMutex
-var serviceToClientMap map[string]genericclient.Client
+var serviceToClientMap *utils.MutexMap[string, *myClient]
 var options []func(*store.ServiceMeta) (client.Option, error)
 
 func init() {
-	mu = sync.RWMutex{}
-	serviceToClientMap = make(map[string]genericclient.Client)
+	serviceToClientMap = utils.NewMutexMap[string, *myClient]()
 	options = []func(*store.ServiceMeta) (client.Option, error){
 		getServiceRegistryOption,
 		getServiceLoadBalancerOption,
@@ -35,7 +41,7 @@ func (s *serviceChangeHandler) OnStatechanged(data ...interface{}) error {
 	isAdd := data[0].(bool)
 	meta := data[1].(*store.ServiceMeta)
 	if isAdd {
-		return mustUpdateClient(meta)
+		return addOrReplaceClient(meta)
 	}
 	return deleteClient(meta)
 }
@@ -44,9 +50,17 @@ type lbChangeHandler struct{}
 
 func (s *lbChangeHandler) OnStatechanged(data ...interface{}) error {
 	meta := data[0].(*store.ServiceMeta)
-	return mustUpdateClient(meta)
+	return addOrReplaceClient(meta)
 }
 
+/*
+Choose to make my provider as the provider in the generic package seems to block infinitely after emiting
+only one instance of descriptor. But building a generic client require a channel of descriptor. The easy
+solution of rereading and parsing the file in not only expensive, but also violate the single source of truth
+principle. The service descriptors in the store package should be the only source of truth, and serviceMeta,
+apiMeta, and the whole bunch of other data (for example, client) are generared with them. So we implement
+our own provider to build the generic client
+*/
 type myProvider struct {
 	closeOnce sync.Once
 	svcs      chan *descriptor.ServiceDescriptor
@@ -71,11 +85,24 @@ func (p *myProvider) Close() error {
 	return nil
 }
 
-// service name is not file name, but the name of the service in the idl file
-func mustUpdateClient(meta *store.ServiceMeta) error {
-	mu.Lock()
-	defer mu.Unlock()
+/*
+Generic client does not support pointer receiver, and it is too expensive to copy the whole client
+each time we make a call; so I make a wraper class here
 
+An alternative is to include the handler logic here so to reduce passing parameters via funciton on
+copy. However, it will mess up with the single responsibility principle. This class should only be
+responsible for keeping clients up to date,
+*/
+type myClient struct {
+	client genericclient.Client
+}
+
+func (c *myClient) GenericCall(ctx context.Context, method string, request interface{}, callOptions ...callopt.Option) (response interface{}, err error) {
+	return c.client.GenericCall(ctx, method, request, callOptions...)
+}
+
+// service name is not file name, but the name of the service in the idl file
+func addOrReplaceClient(meta *store.ServiceMeta) error {
 	decriptor, err := meta.Descriptor.Get()
 	if err != nil {
 		return err
@@ -100,29 +127,21 @@ func mustUpdateClient(meta *store.ServiceMeta) error {
 		g,
 		opts...,
 	)
+
 	if err != nil {
 		return err
 	}
-	serviceToClientMap[meta.ServiceName] = client
-
+	serviceToClientMap.AddOrReplace(meta.ServiceName, &myClient{client: client})
 	return nil
 }
 
 func deleteClient(meta *store.ServiceMeta) error {
-	mu.Lock()
-	defer mu.Unlock()
-	delete(serviceToClientMap, meta.ServiceName)
+	serviceToClientMap.Delete(meta.ServiceName)
 	return nil
 }
 
-func GetClient(serviceName string) (genericclient.Client, error) {
-	mu.RLock()
-	defer mu.RUnlock()
-	client, ok := serviceToClientMap[serviceName]
-	if !ok {
-		return nil, fmt.Errorf("client not found for service %s", serviceName)
-	}
-	return client, nil
+func GetClient(serviceName string) (*myClient, bool) {
+	return serviceToClientMap.Get(serviceName)
 }
 
 func getOptionsFor(meta *store.ServiceMeta) ([]client.Option, error) {
