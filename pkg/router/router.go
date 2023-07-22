@@ -65,7 +65,6 @@ type RouteData struct {
 
 type methodRouteHandeler struct{}
 
-// serviceName, methodName, url, httpMethod, isAdd?
 func (rh *methodRouteHandeler) OnStatechanged(data ...interface{}) error {
 	serviceName := data[0].(string)
 	methodName := data[1].(string)
@@ -81,7 +80,6 @@ func (rh *methodRouteHandeler) OnStatechanged(data ...interface{}) error {
 
 type serviceRouteHandeler struct{}
 
-// isAdd?, serviceMeta
 func (rh *serviceRouteHandeler) OnStatechanged(data ...interface{}) error {
 	isAdd := data[0].(bool)
 	meta := data[1].(*store.ServiceMeta)

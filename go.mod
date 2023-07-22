@@ -17,7 +17,7 @@ require (
 	github.com/buger/jsonparser v1.1.1 // indirect
 	github.com/bytedance/go-tagexpr/v2 v2.9.2 // indirect
 	github.com/bytedance/gopkg v0.0.0-20220817015305-b879a72dc90f // indirect
-	github.com/bytedance/sonic v1.8.1 // indirect
+	github.com/bytedance/sonic v1.8.1
 	github.com/chenzhuoyu/base64x v0.0.0-20221115062448-fe3a3abad311 // indirect
 	github.com/chenzhuoyu/iasm v0.0.0-20230222070914-0b1b64b0e762 // indirect
 	github.com/choleraehyq/pid v0.0.16 // indirect

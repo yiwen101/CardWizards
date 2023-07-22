@@ -1,15 +1,23 @@
 package service
 
+// service is responsible for providing the api gateway service
+
 import (
 	"context"
 	"net/http"
 
 	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/cloudwego/hertz/pkg/app/server"
 	"github.com/yiwen101/CardWizards/pkg/caller"
 	"github.com/yiwen101/CardWizards/pkg/router"
 	"github.com/yiwen101/CardWizards/pkg/service/validator"
 	"github.com/yiwen101/CardWizards/pkg/store"
 )
+
+func Register(r *server.Hertz) {
+
+	r.Any("/*path", func(ctx context.Context, c *app.RequestContext) { Proxy.Serve(ctx, c, nil) })
+}
 
 var Proxy filter
 

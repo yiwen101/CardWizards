@@ -12,8 +12,6 @@ type Admin interface {
 	CheckProxyStatus() (bool, error)
 	TurnOnProxy() error  //proxyGate
 	TurnOffProxy() error //proxyGate
-	GetProxyAddress() (string, error)
-	GetStoreAddress() (string, error)
 
 	GetAPIs(serviceName string) (map[string]*ApiMeta, error)
 	AddService(idlFileName, clusterName string) error                 //validator, caller,  router, APIGate
@@ -59,15 +57,14 @@ func init() {
 		lbStateListners:        []EventListener{},
 		ServicesMap:            map[string]*ServiceMeta{},
 		ProxyAddress:           "",
-		StoreAddress:           "",
 		IdlFolderRelativePath:  "../../IDL",
 	}
 }
 
-func (s *Store) Load(ProxyAddress, StoreAddress, IdlFolderRelativePath string) {
+func (s *Store) Load(ProxyAddress, IdlFolderRelativePath, password string) {
 	s.ProxyAddress = ProxyAddress
-	s.StoreAddress = StoreAddress
 	s.IdlFolderRelativePath = IdlFolderRelativePath
+	s.Password = password
 	thiriftFiles, err := os.ReadDir(s.IdlFolderRelativePath)
 	if err != nil {
 		log.Fatal(err)
@@ -114,6 +111,7 @@ type Store struct {
 	ProxyAddress          string
 	StoreAddress          string
 	IdlFolderRelativePath string
+	Password              string
 }
 
 type ServiceMeta struct {

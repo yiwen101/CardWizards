@@ -1,8 +1,9 @@
 package validator
 
 import (
-	"encoding/json"
 	"fmt"
+
+	"github.com/bytedance/sonic"
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/kitex/pkg/generic/descriptor"
@@ -13,7 +14,7 @@ func Validate(c *app.RequestContext, serviceName, methodName string) (bool, erro
 	b, _ := c.Body()
 	var j map[string]interface{}
 
-	err := json.Unmarshal(b, &j)
+	err := sonic.Unmarshal(b, &j)
 	if err != nil {
 		return false, err
 	}

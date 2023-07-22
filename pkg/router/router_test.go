@@ -38,7 +38,7 @@ func TestValidateAnnotatedRoutes(t *testing.T) {
 */
 
 func TestBuildGetUpdateAndDeleteRoutes(t *testing.T) {
-	store.InfoStore.Load("", "", "../../testing/idl")
+	store.InfoStore.Load("", "../../testing/idl", "")
 	data, ok := GetRoute("GET", "/arithmetic/Add")
 	test.Assert(t, ok)
 	test.Assert(t, data.ServiceName == "arithmetic" && data.MethodName == "Add")

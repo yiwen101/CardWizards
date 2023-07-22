@@ -8,7 +8,7 @@ import (
 )
 
 func TestCallerClientsUpdatesMethods(t *testing.T) {
-	store.InfoStore.Load("", "", "../../testing/idl")
+	store.InfoStore.Load("", "../../testing/idl", "")
 	client, ok := GetClient("arithmetic")
 	// debug mode peek: client should be with weighted round robin lb
 	test.Assert(t, ok)

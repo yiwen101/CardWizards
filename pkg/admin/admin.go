@@ -2,31 +2,42 @@ package admin
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
+
+	"github.com/bytedance/sonic"
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/app/server"
-	"github.com/yiwen101/CardWizards/pkg/service"
 	"github.com/yiwen101/CardWizards/pkg/store"
 )
 
-func RegisterProxy(r *server.Hertz) {
-
-	r.Any("/*path", func(ctx context.Context, c *app.RequestContext) { service.Proxy.Serve(ctx, c, nil) })
-}
-
-func RegisterAdmin(r *server.Hertz) {
+func Register(r *server.Hertz) {
 	admin := r.Group("/admin")
-	admin.Use(func(ctx context.Context, c *app.RequestContext) {
-		b, _ := c.Body()
-		var j map[string]interface{}
 
-		err := json.Unmarshal(b, &j)
-		if err != nil {
-			return false, err
-		}
-	})
+	password := store.InfoStore.Password
+	if password != "" {
+		admin.Use(func(ctx context.Context, c *app.RequestContext) {
+			b, _ := c.Body()
+			var j map[string]interface{}
+
+			err := sonic.Unmarshal(b, &j)
+			if err != nil {
+				c.AbortWithError(http.StatusBadRequest, err)
+			}
+			p, ok := j["password"]
+			if !ok {
+				c.AbortWithMsg("wrong password", http.StatusBadRequest)
+			}
+			str, ok := p.(string)
+			if !ok {
+				c.AbortWithMsg("wrong password", http.StatusBadRequest)
+			}
+			if str != password {
+				c.AbortWithMsg("wrong password", http.StatusBadRequest)
+			}
+		})
+	}
+
 	admin.GET("/allServices",
 		func(ctx context.Context, c *app.RequestContext) {
 
@@ -201,9 +212,9 @@ func RegisterAdmin(r *server.Hertz) {
 			}
 			c.String(http.StatusOK, "Route is added")
 		})
-	admin.POST("/updateRoute/:serviceName/:methodName/:url/:httpMethod/:newUrl/:newHttpMethod",
+	admin.POST("/modifyRoute/:serviceName/:methodName/:url/:httpMethod/:newUrl/:newHttpMethod",
 		func(ctx context.Context, c *app.RequestContext) {
-			err := store.InfoStore.UpdateRoute(c.Param("serviceName"), c.Param("methodName"), c.Param("url"), c.Param("httpMethod"), c.Param("newUrl"), c.Param("newHttpMethod"))
+			err := store.InfoStore.ModifyRoute(c.Param("serviceName"), c.Param("methodName"), c.Param("url"), c.Param("httpMethod"), c.Param("newUrl"), c.Param("newHttpMethod"))
 			if err != nil {
 				c.String(http.StatusInternalServerError, err.Error())
 				return

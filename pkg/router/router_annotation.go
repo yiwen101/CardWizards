@@ -93,4 +93,65 @@ func GetRouteManager() (RouteManager, error) {
 	routeManager = &routeManagerImpl{dm: dm, store: nil, cache: cache, routers: routers, route: nil}
 	return routeManager, nil
 }
+
+
+
+func (hm *handlerManagerImpl) HandlerForAnnotatedRoutes(httpMethod string) (func(ctx context.Context, c *app.RequestContext), error) {
+	routeManager, err := router.GetRouteManager()
+	if err != nil {
+		return nil, err
+	}
+
+	handlerCache := &handlerCache{}
+
+	return func(ctx context.Context, c *app.RequestContext) {
+
+		serviceName, methodName, err := routeManager.ValidateRoute(c, httpMethod)
+		if err != nil {
+			c.String(http.StatusBadRequest, "invalid route: "+err.Error())
+			return
+		}
+
+		handler, ok := handlerCache.get(serviceName, methodName)
+		if ok {
+			handler(ctx, c)
+			return
+		}
+
+		handler, err = hm.HandlerForRoute(serviceName, methodName)
+		if err != nil {
+			c.String(http.StatusInternalServerError, "Internal Server Error in getting the handler: "+err.Error())
+			return
+		}
+		handlerCache.save(serviceName, methodName, handler)
+		handler(ctx, c)
+	}, nil
+}
+
+
+
+type handlerCache struct {
+	m map[string]map[string]func(ctx context.Context, c *app.RequestContext)
+}
+
+func (hc *handlerCache) get(serviceName, methodName string) (func(ctx context.Context, c *app.RequestContext), bool) {
+	if hc.m == nil {
+		hc.m = make(map[string]map[string]func(ctx context.Context, c *app.RequestContext))
+	}
+	if hc.m[serviceName] == nil {
+		hc.m[serviceName] = make(map[string]func(ctx context.Context, c *app.RequestContext))
+	}
+	handler, ok := hc.m[serviceName][methodName]
+	return handler, ok
+}
+
+func (hc *handlerCache) save(serviceName, methodName string, handler func(ctx context.Context, c *app.RequestContext)) {
+	if hc.m == nil {
+		hc.m = make(map[string]map[string]func(ctx context.Context, c *app.RequestContext))
+	}
+	if hc.m[serviceName] == nil {
+		hc.m[serviceName] = make(map[string]func(ctx context.Context, c *app.RequestContext))
+	}
+	hc.m[serviceName][methodName] = handler
+}
 */

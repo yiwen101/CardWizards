@@ -8,7 +8,7 @@ import (
 
 func TestLoadAndAddService(t *testing.T) {
 	InfoStore.AddService("arithmetic.thrift", "../../testing/idl")
-	InfoStore.Load("", "", "../../testing/idl")
+	InfoStore.Load("", "../../testing/idl", "")
 }
 
 /*
@@ -21,7 +21,7 @@ func TestLoadAndAddService(t *testing.T) {
 */
 
 func TestPRoxyLevelCommands(t *testing.T) {
-	InfoStore.Load("test1", "test2", "../../testing/idl")
+	InfoStore.Load("test1", "../../testing/idl", "")
 	m, err := InfoStore.GetAllServiceNames()
 	test.Assert(t, err == nil, err)
 	test.Assert(t, len(m) == 4, "no service found")
@@ -54,7 +54,7 @@ func TestPRoxyLevelCommands(t *testing.T) {
 */
 
 func TestServiceLevelCommands(t *testing.T) {
-	InfoStore.Load("test1", "test2", "../../testing/idl")
+	InfoStore.Load("test1", "../../testing/idl", "")
 	_, err := InfoStore.GetAPIs("test")
 	test.Assert(t, err != nil, err)
 	m, err := InfoStore.GetAPIs("arithmetic")
@@ -96,7 +96,7 @@ func TestServiceLevelCommands(t *testing.T) {
 		SetLbType(serviceName, lbType string) error   //lb
 */
 func TestAPILevelCommands(t *testing.T) {
-	InfoStore.Load("test1", "test2", "../../testing/idl")
+	InfoStore.Load("test1", "../../testing/idl", "")
 	api, err := InfoStore.CheckAPIStatus("arithmetic", "Add")
 	test.Assert(t, err == nil, err)
 	test.Assert(t, api.IsOn == true, "api gate should be off")
@@ -143,7 +143,7 @@ func (t *testHandeler) OnStatechanged(data ...interface{}) error {
 func TestNotification(t *testing.T) {
 	th := &testHandeler{value: false}
 
-	InfoStore.Load("test1", "test2", "../../testing/idl")
+	InfoStore.Load("test1", "../../testing/idl", "")
 	InfoStore.RegisterProxyStateListener(th)
 	InfoStore.TurnOnProxy()
 	test.Assert(t, th.value == true, "proxy should be on")

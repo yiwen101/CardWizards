@@ -2,9 +2,10 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strconv"
+
+	"github.com/bytedance/sonic"
 
 	"log"
 
@@ -66,7 +67,7 @@ type responseStruct struct {
 }
 
 func (g *GenericServiceImpl) GenericCall(ctx context.Context, method string, request interface{}) (response interface{}, err error) {
-	jsonBytes, err := json.Marshal(request)
+	jsonBytes, err := sonic.Marshal(request)
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +78,7 @@ func (g *GenericServiceImpl) GenericCall(ctx context.Context, method string, req
 	}
 
 	var req requestStruct
-	err = json.Unmarshal([]byte(str), &req)
+	err = sonic.Unmarshal([]byte(str), &req)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +99,7 @@ func (g *GenericServiceImpl) GenericCall(ctx context.Context, method string, req
 		resp.Result = 0
 	}
 
-	respBytes, err := json.Marshal(resp)
+	respBytes, err := sonic.Marshal(resp)
 	if err != nil {
 		return nil, err
 	}
