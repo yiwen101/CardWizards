@@ -9,8 +9,9 @@ import (
 	"github.com/cloudwego/kitex/client"
 	"github.com/cloudwego/kitex/client/genericclient"
 	"github.com/cloudwego/kitex/pkg/generic"
+	"github.com/cloudwego/kitex/pkg/generic/descriptor"
 	"github.com/kitex-contrib/registry-nacos/resolver"
-	"github.com/yiwen101/CardWizards/configuer/clientOption"
+	"github.com/yiwen101/CardWizards/admin/clientOption"
 	desc "github.com/yiwen101/CardWizards/pkg/store/descriptor"
 )
 
@@ -141,6 +142,17 @@ func getServiceRegistryOption(serviceName string) (client.Option, error) {
 	}
 
 	return client.WithResolver(nacosResolver), nil
+}
+
+// so I need to build my own provider
+func provideTwo() (d1, d2 *descriptor.ServiceDescriptor, err error) {
+	p, err := generic.NewThriftFileProvider("arithmetic.thrift", "../../IDL")
+	if err != nil {
+		return nil, nil, err
+	}
+	svc := <-p.Provide()
+	svc2 := <-p.Provide()
+	return svc, svc2, nil
 }
 
 var ClientManager clientManager

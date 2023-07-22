@@ -1,4 +1,4 @@
-package descriptor
+package store
 
 import (
 	"fmt"
@@ -32,7 +32,7 @@ func (d *descriptorKeeper) update() {
 		d.svcDsc.Store(svc)
 	}
 }
-func (d *descriptorKeeper) get() (*descriptor.ServiceDescriptor, error) {
+func (d *descriptorKeeper) Get() (*descriptor.ServiceDescriptor, error) {
 	svcDsc, ok := d.svcDsc.Load().(*descriptor.ServiceDescriptor)
 	if !ok {
 		return nil, fmt.Errorf("invalid service descriptor for %s", d.fileName)
@@ -40,7 +40,7 @@ func (d *descriptorKeeper) get() (*descriptor.ServiceDescriptor, error) {
 	return svcDsc, nil
 }
 func (d *descriptorKeeper) validateMethodName(methodName string) error {
-	sd, err := d.get()
+	sd, err := d.Get()
 	if err != nil {
 		return err
 	}
