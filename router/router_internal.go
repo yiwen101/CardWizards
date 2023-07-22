@@ -9,8 +9,8 @@ import (
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/kitex/pkg/generic"
 	"github.com/cloudwego/kitex/pkg/generic/descriptor"
-	desc "github.com/yiwen101/CardWizards/common/descriptor"
 	"github.com/yiwen101/CardWizards/pkg/store"
+	desc "github.com/yiwen101/CardWizards/pkg/store/descriptor"
 )
 
 var routeManager *routeManagerImpl
@@ -28,7 +28,7 @@ type Api struct {
 }
 
 type routeManagerImpl struct {
-	store store.Store
+	store *store.Store
 	dm    desc.DescsManager
 	// to update?
 	cache   map[string]map[string]Route
@@ -153,6 +153,6 @@ func GetRouteManager() (RouteManager, error) {
 	}
 	cache := make(map[string]map[string]Route)
 	routers := dm.GetRouters()
-	routeManager = &routeManagerImpl{dm: dm, store: store.MetaStore, cache: cache, routers: routers, route: nil}
+	routeManager = &routeManagerImpl{dm: dm, store: nil, cache: cache, routers: routers, route: nil}
 	return routeManager, nil
 }

@@ -7,7 +7,7 @@ import (
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/thriftgo/pkg/test"
 	"github.com/yiwen101/CardWizards/common"
-	"github.com/yiwen101/CardWizards/common/descriptor"
+	"github.com/yiwen101/CardWizards/pkg/store/descriptor"
 	"github.com/yiwen101/CardWizards/service/clients"
 )
 

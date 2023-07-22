@@ -2,7 +2,7 @@ package validate
 
 import (
 	"github.com/cloudwego/hertz/pkg/app"
-	desc "github.com/yiwen101/CardWizards/common/descriptor"
+	desc "github.com/yiwen101/CardWizards/pkg/store/descriptor"
 )
 
 type Validator interface {

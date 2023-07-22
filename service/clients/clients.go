@@ -10,8 +10,8 @@ import (
 	"github.com/cloudwego/kitex/client/genericclient"
 	"github.com/cloudwego/kitex/pkg/generic"
 	"github.com/kitex-contrib/registry-nacos/resolver"
-	desc "github.com/yiwen101/CardWizards/common/descriptor"
 	"github.com/yiwen101/CardWizards/configuer/clientOption"
+	desc "github.com/yiwen101/CardWizards/pkg/store/descriptor"
 )
 
 var dm desc.DescsManager
