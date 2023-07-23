@@ -125,7 +125,7 @@ func TestAPILevelCommands(t *testing.T) {
 	routes, err := InfoStore.GetRoutes("arithmetic", "Add")
 	test.Assert(t, err == nil, err)
 	test.Assert(t, routes["GET"]["/arithmetic/Add"], "default")
-	err = InfoStore.ModifyRoute("arithmetic", "Add", "/arithmetic/Add", "GET", "/test", "POST")
+	err = InfoStore.ModifyRoute("arithmetic", "Add", "GET", "/arithmetic/Add", "POST", "/test")
 	test.Assert(t, err == nil, err)
 	test.Assert(t, !routes["GET"]["/arithmetic/Add"], "deleted")
 	test.Assert(t, routes["POST"]["/test"], "added")

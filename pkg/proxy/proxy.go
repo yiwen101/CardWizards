@@ -1,4 +1,4 @@
-package service
+package proxy
 
 // service is responsible for providing the api gateway service
 
@@ -9,8 +9,8 @@ import (
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/app/server"
 	"github.com/yiwen101/CardWizards/pkg/caller"
+	"github.com/yiwen101/CardWizards/pkg/proxy/validator"
 	"github.com/yiwen101/CardWizards/pkg/router"
-	"github.com/yiwen101/CardWizards/pkg/service/validator"
 	"github.com/yiwen101/CardWizards/pkg/store"
 )
 
@@ -19,33 +19,34 @@ func Register(r *server.Hertz) {
 	r.Any("/*path", func(ctx context.Context, c *app.RequestContext) { Proxy.Serve(ctx, c, nil) })
 }
 
-var Proxy filter
+var Proxy handlerChain
 
 func init() {
-	porxyGateFilter := newFilter(proxyGateHandler)
-	routeFilter := newFilter(routeHandler)
-	apiGateFilter := newFilter(apiGateHandler)
-	validationGateFilter := newFilter(validationGateHandler)
-	hander := newFilter(mainHandler)
+	porxyGate := newHandlerChainNode(proxyGateHandler)
+	checkContentType := newHandlerChainNode(contentTypeHandler)
+	router := newHandlerChainNode(routeHandler)
+	apiGate := newHandlerChainNode(apiGateHandler)
+	validator := newHandlerChainNode(validationGateHandler)
+	mainHander := newHandlerChainNode(mainHandler)
 
-	Proxy = makeFilterChain(porxyGateFilter, routeFilter, apiGateFilter, validationGateFilter, hander)
+	Proxy = makeFilterChain(porxyGate, checkContentType, router, apiGate, validator, mainHander)
 }
 
-type filter interface {
+type handlerChain interface {
 	Serve(ctx context.Context, c *app.RequestContext, route *router.RouteData)
-	SetNext(f filter)
+	SetNext(f handlerChain)
 }
 
-type baseFilter struct {
+type baseHandler struct {
 	hander func(ctx context.Context, c *app.RequestContext, route *router.RouteData) (*router.RouteData, bool)
-	next   filter
+	next   handlerChain
 }
 
-func (f *baseFilter) SetNext(next filter) {
+func (f *baseHandler) SetNext(next handlerChain) {
 	f.next = next
 }
 
-func (f *baseFilter) Serve(ctx context.Context, c *app.RequestContext, route *router.RouteData) {
+func (f *baseHandler) Serve(ctx context.Context, c *app.RequestContext, route *router.RouteData) {
 	if r, ok := f.hander(ctx, c, route); ok {
 		if f.next != nil {
 			f.next.Serve(ctx, c, r)
@@ -53,8 +54,18 @@ func (f *baseFilter) Serve(ctx context.Context, c *app.RequestContext, route *ro
 	}
 }
 
-func newFilter(hander func(ctx context.Context, c *app.RequestContext, route *router.RouteData) (*router.RouteData, bool)) filter {
-	return &baseFilter{hander: hander}
+func newHandlerChainNode(hander func(ctx context.Context, c *app.RequestContext, route *router.RouteData) (*router.RouteData, bool)) handlerChain {
+	return &baseHandler{hander: hander}
+}
+
+func makeFilterChain(f ...handlerChain) handlerChain {
+	if len(f) == 0 {
+		return nil
+	}
+	for i := 0; i < len(f)-1; i++ {
+		f[i].SetNext(f[i+1])
+	}
+	return f[0]
 }
 
 func proxyGateHandler(ctx context.Context, c *app.RequestContext, route *router.RouteData) (*router.RouteData, bool) {
@@ -63,13 +74,31 @@ func proxyGateHandler(ctx context.Context, c *app.RequestContext, route *router.
 		c.String(http.StatusInternalServerError, err.Error())
 		return nil, false
 	}
+	if !ok {
+		c.Abort()
+	}
 	return nil, ok
+}
+
+func contentTypeHandler(ctx context.Context, c *app.RequestContext, route *router.RouteData) (*router.RouteData, bool) {
+	bytes := c.ContentType()
+	str := string(bytes)
+	if str != "application/json" {
+		c.String(http.StatusBadRequest, "Invalid Content-Type: "+str)
+		return nil, false
+	}
+	return route, true
 }
 
 func routeHandler(ctx context.Context, c *app.RequestContext, route *router.RouteData) (*router.RouteData, bool) {
 	path := string(c.URI().Path())
 	method := string(c.Method())
-	return router.GetRoute(method, path)
+	r, ok := router.GetRoute(method, path)
+	if !ok {
+		c.String(http.StatusNotFound, "404 page not found")
+		return nil, false
+	}
+	return r, true
 }
 
 func apiGateHandler(ctx context.Context, c *app.RequestContext, route *router.RouteData) (*router.RouteData, bool) {
@@ -82,6 +111,10 @@ func apiGateHandler(ctx context.Context, c *app.RequestContext, route *router.Ro
 		c.String(http.StatusInternalServerError, err.Error())
 		return nil, false
 	}
+	if !meta.IsOn {
+		c.String(http.StatusNotFound, "404 page not found")
+		return nil, false
+	}
 	return route, meta.IsOn
 }
 
@@ -92,13 +125,9 @@ func validationGateHandler(ctx context.Context, c *app.RequestContext, route *ro
 		return nil, false
 	}
 	if meta.ValidationOn {
-		good, err := validator.Validate(c, route.ServiceName, route.MethodName)
-		if err != nil {
-			c.String(http.StatusInternalServerError, err.Error())
-			return nil, false
-		}
+		good, errInfo := validator.Validate(c, route.ServiceName, route.MethodName)
 		if !good {
-			c.String(http.StatusBadRequest, "Invalid body: "+err.Error())
+			c.String(http.StatusBadRequest, "Invalid body: "+errInfo.Error())
 			return nil, false
 		}
 	}
@@ -106,7 +135,7 @@ func validationGateHandler(ctx context.Context, c *app.RequestContext, route *ro
 	return route, true
 }
 
-// posible extension: enabling managing call options on api level; should add to filter
+// posible extension: enabling managing call options per api level; should add to filter
 func mainHandler(ctx context.Context, c *app.RequestContext, route *router.RouteData) (*router.RouteData, bool) {
 	client, ok := caller.GetClient(route.ServiceName)
 	if !ok {
@@ -122,28 +151,16 @@ func mainHandler(ctx context.Context, c *app.RequestContext, route *router.Route
 
 	genericResponse, err := client.GenericCall(ctx, route.MethodName, string(jsonbytes))
 	if err != nil {
-		c.String(http.StatusInternalServerError, "Internal Server Error in making the call: "+err.Error())
+		c.String(http.StatusBadRequest, err.Error())
 		return nil, false
 	}
-
-	resp, ok := genericResponse.(string)
+	str, ok := genericResponse.(string)
 	if !ok {
-		c.String(http.StatusInternalServerError, "Internal Server Error in converting the generic response: "+err.Error())
+		c.String(http.StatusInternalServerError, "Internal Server Error in type assertion")
 		return nil, false
 	}
-
-	c.JSON(200, resp)
+	c.String(200, str)
+	c.SetContentType("application/json")
 
 	return route, true
-
-}
-
-func makeFilterChain(f ...filter) filter {
-	if len(f) == 0 {
-		return nil
-	}
-	for i := 0; i < len(f)-1; i++ {
-		f[i].SetNext(f[i+1])
-	}
-	return f[0]
 }

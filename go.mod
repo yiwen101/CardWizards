@@ -11,6 +11,8 @@ require (
 	github.com/kitex-contrib/registry-nacos v0.1.0
 )
 
+require github.com/savsgio/gotils v0.0.0-20220530130905-52f3993e8d6d // indirect
+
 require (
 	github.com/aliyun/alibaba-cloud-sdk-go v1.61.18 // indirect
 	github.com/apache/thrift v0.13.0 // indirect
@@ -30,6 +32,7 @@ require (
 	github.com/google/pprof v0.0.0-20220608213341-c488b8fa1db3 // indirect
 	github.com/henrylee2cn/ameda v1.4.10 // indirect
 	github.com/henrylee2cn/goutil v0.0.0-20210127050712-89660552f6f8 // indirect
+	github.com/hertz-contrib/pprof v0.1.0
 	github.com/jhump/protoreflect v1.8.2 // indirect
 	github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af // indirect
 	github.com/json-iterator/go v1.1.12 // indirect

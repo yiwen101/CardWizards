@@ -7,6 +7,8 @@ import (
 	"sync"
 )
 
+//todo improve performance by adding multiple mutexes
+
 type Admin interface {
 	GetAllServiceNames() (map[string]*ServiceMeta, error)
 	CheckProxyStatus() (bool, error)
@@ -26,23 +28,15 @@ type Admin interface {
 	TurnOffAPI(serviceName, methodName string) error                                      //APIGate
 	TurnOnValidation(serviceName, methodName string) error                                //validator
 	TurnOffValidation(serviceName, methodName string) error                               //validator
-	AddRoute(serviceName, methodName, url, httpMethod string) error                       //router
-	ModifyRoute(serviceName, methodName, url, httpMethod, newUrl, newMethod string) error //router
-	RemoveRoute(serviceName, methodName, url, httpMethod string) error                    //router
+	AddRoute(serviceName, methodName, httpMethod, url string) error                       //router
+	ModifyRoute(serviceName, methodName, httpMethod, url, newMethod, newUrl string) error //router
+	RemoveRoute(serviceName, methodName, httpMethod, url string) error                    //router
 	GetRoutes(serviceName, methodName string) (map[string]map[string]bool, error)
 	GetLbType(serviceName string) (string, error) //caller
 	SetLbType(serviceName, lbType string) error   //caller
 }
 
 var InfoStore *Store
-
-/*
-var (
-	ProxyAddress   = flag.String("addr", "127.0.0.1:8080", "proxy address")
-	IDLFolederPath = flag.String("idl", "./IDL", "idl folder path")
-	NAcosAddress   = flag.String("nacos-addr", "", "nacos server's address")
-)
-*/
 
 func init() {
 
@@ -61,6 +55,7 @@ func init() {
 	}
 }
 
+// default cluster name is the name of the idl file
 func (s *Store) Load(ProxyAddress, IdlFolderRelativePath, password string) {
 	s.ProxyAddress = ProxyAddress
 	s.IdlFolderRelativePath = IdlFolderRelativePath
@@ -377,7 +372,7 @@ func (s *Store) TurnOffValidation(serviceName, methodName string) error {
 	return nil
 }
 
-func (s *Store) AddRoute(serviceName, methodName, url, httpMethod string) error {
+func (s *Store) AddRoute(serviceName, methodName, httpMethod, url string) error {
 	api, err := s.CheckAPIStatus(serviceName, methodName)
 	if err != nil {
 		return err
@@ -398,7 +393,7 @@ func (s *Store) AddRoute(serviceName, methodName, url, httpMethod string) error 
 	return nil
 }
 
-func (s *Store) RemoveRoute(serviceName, methodName, url, httpMethod string) error {
+func (s *Store) RemoveRoute(serviceName, methodName, httpMethod, url string) error {
 	api, err := s.CheckAPIStatus(serviceName, methodName)
 	if err != nil {
 		return err
@@ -419,12 +414,12 @@ func (s *Store) RemoveRoute(serviceName, methodName, url, httpMethod string) err
 	return nil
 }
 
-func (s *Store) ModifyRoute(serviceName, methodName, url, httpMethod, newUrl, newMethod string) error {
-	err := s.RemoveRoute(serviceName, methodName, url, httpMethod)
+func (s *Store) ModifyRoute(serviceName, methodName, httpMethod, url, newMethod, newUrl string) error {
+	err := s.RemoveRoute(serviceName, methodName, httpMethod, url)
 	if err != nil {
 		return err
 	}
-	return s.AddRoute(serviceName, methodName, newUrl, newMethod)
+	return s.AddRoute(serviceName, methodName, newMethod, newUrl)
 }
 
 func (s *Store) GetRoutes(serviceName, methodName string) (map[string]map[string]bool, error) {

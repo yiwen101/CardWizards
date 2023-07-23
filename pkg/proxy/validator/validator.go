@@ -33,12 +33,8 @@ func Validate(c *app.RequestContext, serviceName, methodName string) (bool, erro
 	}
 
 	err = validateBody(fuc, j)
-	if err != nil {
-		//c.String(http.StatusBadRequest, fmt.Sprintf("Invalid body, error message is: %s", err))
-		return false, err
-	}
 
-	return true, nil
+	return err == nil, err
 }
 
 func validateType(t *descriptor.TypeDescriptor, json interface{}, fieldName string) error {

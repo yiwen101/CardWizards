@@ -71,6 +71,7 @@ func (g *GenericServiceImpl) GenericCall(ctx context.Context, method string, req
 	if err != nil {
 		return nil, err
 	}
+	log.Println("jsonBytes:", string(jsonBytes))
 	str, err := strconv.Unquote(string(jsonBytes))
 	if err != nil {
 		fmt.Println("Error:", err)
@@ -104,6 +105,7 @@ func (g *GenericServiceImpl) GenericCall(ctx context.Context, method string, req
 		return nil, err
 	}
 	result := string(respBytes)
+
 	return result, nil
 
 }

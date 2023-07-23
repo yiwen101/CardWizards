@@ -4,8 +4,9 @@ import (
 	"flag"
 
 	"github.com/cloudwego/hertz/pkg/app/server"
+	"github.com/hertz-contrib/pprof"
 	"github.com/yiwen101/CardWizards/pkg/admin"
-	"github.com/yiwen101/CardWizards/pkg/service"
+	"github.com/yiwen101/CardWizards/pkg/proxy"
 	"github.com/yiwen101/CardWizards/pkg/store"
 )
 
@@ -34,6 +35,12 @@ func main() {
 	)
 
 	admin.Register(h)
-	service.Register(h)
+	proxy.Register(h)
+	pprof.Register(h)
+	// what is the cache solution for apigateway with json body?
+	// extension: add config.Option
+	// 在较大 request size 下（request size > 1M），推荐使用 go net 网络库加流式。在其他场景下，推荐使用 netpoll 网络库，会获得极致的性能。
+	/*When using Service Registration and Discovery, Spin will register the service into a registry center when starting up, and use signalWaiter to monitor service exceptions. Only by using Spin can we support graceful shutdown.*/
+
 	h.Spin()
 }

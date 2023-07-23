@@ -1,16 +1,165 @@
 package admin
 
 import (
+	"bytes"
 	"context"
 	"net/http"
+	"testing"
 
 	"github.com/bytedance/sonic"
 	"github.com/cloudwego/hertz/pkg/app"
-	"github.com/cloudwego/hertz/pkg/app/server"
+	"github.com/cloudwego/hertz/pkg/common/config"
+	"github.com/cloudwego/hertz/pkg/common/ut"
+	"github.com/cloudwego/hertz/pkg/route"
+	"github.com/cloudwego/thriftgo/pkg/test"
+	"github.com/yiwen101/CardWizards/pkg/proxy"
+	"github.com/yiwen101/CardWizards/pkg/router"
 	"github.com/yiwen101/CardWizards/pkg/store"
 )
 
-func Register(r *server.Hertz) {
+var testRouter *route.Engine
+
+func TestAdmin(t *testing.T) {
+	store.InfoStore.Load("proxyAddress", "../../testing/idl", "")
+	testRouter = route.NewEngine(config.NewOptions([]config.Option{}))
+	TestregisterAdmin(testRouter)
+	TestregisterProxy(testRouter)
+
+	bytes, code := call("GET", "/admin/service")
+	test.Assert(t, code == http.StatusOK)
+	var j map[string]interface{}
+	err := sonic.Unmarshal(bytes, &j)
+	test.Assert(t, err == nil, err)
+
+	bytes, code = call("GET", "/admin/service/arithmetic")
+	test.Assert(t, code == http.StatusOK)
+	j = make(map[string]interface{})
+	err = sonic.Unmarshal(bytes, &j)
+	test.Assert(t, err == nil, err)
+
+	bytes, code = call("GET", "/admin/api/arithmetic/Add")
+	test.Assert(t, code == http.StatusOK)
+	j = make(map[string]interface{})
+	err = sonic.Unmarshal(bytes, &j)
+	test.Assert(t, err == nil, err)
+
+	bytes, code = call("GET", "/admin/api/arithmetic")
+	test.Assert(t, code == http.StatusOK)
+	j = make(map[string]interface{})
+	err = sonic.Unmarshal(bytes, &j)
+	test.Assert(t, err == nil, err)
+
+	bytes, code = call("GET", "/admin/route/arithmetic/Add")
+	test.Assert(t, code == http.StatusOK)
+	a := []struct{ httpMethod, url string }{}
+	err = sonic.Unmarshal(bytes, &a)
+	test.Assert(t, err == nil, err)
+
+	bytes, code = call("GET", "/admin/proxy")
+	test.Assert(t, code == http.StatusOK)
+	var b bool
+	err = sonic.Unmarshal(bytes, &b)
+	test.Assert(t, err == nil, err)
+
+	bytes, code = call("GET", "/admin/lb/arithmetic")
+	test.Assert(t, code == http.StatusOK)
+	var s string
+	err = sonic.Unmarshal(bytes, &s)
+	test.Assert(t, err == nil, err)
+	_, code = call("PUT", "/admin/lb/arithmetic/random")
+	test.Assert(t, code == http.StatusOK)
+	serviceMeta, err := store.InfoStore.GetServiceInfo("arithmetic")
+	test.Assert(t, err == nil)
+	test.Assert(t, serviceMeta.LbType == "random")
+
+	_, code = callWithBody("PUT", "/admin/proxy", false)
+	test.Assert(t, code == http.StatusOK)
+	isOn, err := store.InfoStore.CheckProxyStatus()
+	test.Assert(t, !isOn)
+	test.Assert(t, err == nil, err)
+
+	_, code = call("DELETE", "/admin/service/arithmetic")
+	test.Assert(t, code == http.StatusOK)
+	_, err = store.InfoStore.GetServiceInfo("arithmetic")
+	test.Assert(t, err != nil)
+	_, code = call("POST", "/admin/service/arithmetic.thrift/cluster1")
+	test.Assert(t, code == http.StatusOK)
+	_, err = store.InfoStore.GetServiceInfo("arithmetic")
+	test.Assert(t, err == nil)
+
+	_, code = callWithBody("PUT", "/admin/api/arithmetic/Add", false)
+	test.Assert(t, code == http.StatusOK)
+	meta, err := store.InfoStore.CheckAPIStatus("arithmetic", "Add")
+	test.Assert(t, err == nil)
+	test.Assert(t, !meta.IsOn)
+
+	_, code = callWithBody("PUT", "/admin/service/arithmetic", true)
+	test.Assert(t, code == http.StatusOK)
+	meta, err = store.InfoStore.CheckAPIStatus("arithmetic", "Add")
+	test.Assert(t, err == nil)
+	test.Assert(t, meta.IsOn)
+
+	callWithBody("PUT", "/admin/validation/arithmetic/Add", true)
+	meta, err = store.InfoStore.CheckAPIStatus("arithmetic", "Add")
+	test.Assert(t, err == nil)
+	test.Assert(t, meta.ValidationOn)
+
+	_, code = call("PUT", "/admin/service/arithmetic/arithmetic.thrift/mockCluster")
+	test.Assert(t, code == http.StatusOK)
+	serviceMeta, err = store.InfoStore.GetServiceInfo("arithmetic")
+	test.Assert(t, err == nil)
+	test.Assert(t, serviceMeta.ClusterName == "mockCluster")
+	_, code = call("POST", "/admin/service/fake.thrift/cluster1")
+	test.Assert(t, code != 200)
+
+	_, code = call("POST", "/admin/route/arithmetic/Add/GET/test")
+	test.Assert(t, code == http.StatusOK)
+	_, ok := router.GetRoute("GET", "/test")
+	test.Assert(t, ok)
+
+	_, code = call("PUT", "/admin/route/arithmetic/Add/GET/test/GET/test2")
+	test.Assert(t, code == http.StatusOK)
+	_, ok = router.GetRoute("GET", "/test2")
+	test.Assert(t, ok)
+	_, ok = router.GetRoute("GET", "/test")
+	test.Assert(t, !ok)
+
+	_, code = call("DELETE", "/admin/route/arithmetic/Add/GET/test2")
+	test.Assert(t, code == http.StatusOK)
+	_, ok = router.GetRoute("GET", "/test2")
+	test.Assert(t, !ok)
+}
+
+func TestPassword(t *testing.T) {
+	store.InfoStore.Load("proxyAddress", "../../testing/idl", "password")
+	testRouter = route.NewEngine(config.NewOptions([]config.Option{}))
+	TestregisterAdmin(testRouter)
+	TestregisterProxy(testRouter)
+
+	w := ut.PerformRequest(
+		testRouter,
+		"GET",
+		"/admin/proxy",
+		&ut.Body{},
+		ut.Header{Key: "Content-Type", Value: "application/json"},
+	)
+	code := w.Result().StatusCode()
+	test.Assert(t, code != 200)
+
+	w = ut.PerformRequest(
+		testRouter,
+		"GET",
+		"/admin/proxy",
+		&ut.Body{},
+		ut.Header{Key: "Content-Type", Value: "application/json"},
+		ut.Header{Key: "Password", Value: "password"},
+	)
+	code = w.Result().StatusCode()
+	test.Assert(t, code == 200)
+
+}
+
+func TestregisterAdmin(r *route.Engine) {
 	admin := r.Group("/admin")
 
 	password := store.InfoStore.Password
@@ -285,4 +434,23 @@ func Register(r *server.Hertz) {
 			}
 			c.String(http.StatusOK, "LbType is set")
 		})
+}
+
+func TestregisterProxy(r *route.Engine) {
+	r.GET("/*:test",
+		func(ctx context.Context, c *app.RequestContext) {
+			proxy.Proxy.Serve(ctx, c, nil)
+		})
+}
+
+func call(method string, url string) ([]byte, int) {
+	w := ut.PerformRequest(testRouter, method, url, &ut.Body{}, ut.Header{Key: "Content-Type", Value: "application/json"})
+	return w.Result().Body(), w.Result().StatusCode()
+}
+
+func callWithBody(method string, url string, body bool) ([]byte, int) {
+	bs, _ := sonic.Marshal(body)
+	b := bytes.NewBuffer(bs)
+	w := ut.PerformRequest(testRouter, method, url, &ut.Body{Body: b, Len: b.Len()}, ut.Header{Key: "Content-Type", Value: "application/json"})
+	return w.Result().Body(), w.Result().StatusCode()
 }
