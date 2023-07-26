@@ -36,6 +36,8 @@ func main() {
 
 	admin.Register(h)
 	proxy.Register(h)
+	// todo, refractor with generics
+	// todo, add pprof information to frontEnd
 	pprof.Register(h)
 	// what is the cache solution for apigateway with json body?
 	// extension: add config.Option

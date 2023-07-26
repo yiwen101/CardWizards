@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
+	"net"
 	"strconv"
 
 	"github.com/bytedance/sonic"
@@ -71,7 +73,7 @@ func (g *GenericServiceImpl) GenericCall(ctx context.Context, method string, req
 	if err != nil {
 		return nil, err
 	}
-	log.Println("jsonBytes:", string(jsonBytes))
+	//log.Println("jsonBytes:", string(jsonBytes))
 	str, err := strconv.Unquote(string(jsonBytes))
 	if err != nil {
 		fmt.Println("Error:", err)
@@ -110,7 +112,17 @@ func (g *GenericServiceImpl) GenericCall(ctx context.Context, method string, req
 
 }
 
+var port = flag.String("port", "8888", "port to listen")
+
 func main() {
+
+	flag.Parse()
+
+	ip := "127.0.0.1:" + *port
+	addressOp, err := net.ResolveTCPAddr("tcp", ip)
+	if err != nil {
+		panic(err)
+	}
 
 	p, err := generic.NewThriftFileProvider("arithmetic.thrift", "../../../idl")
 	if err != nil {
@@ -131,17 +143,12 @@ func main() {
 		new(GenericServiceImpl),
 		g,
 		server.WithServerBasicInfo(&rpcinfo.EndpointBasicInfo{ServiceName: "arithmetic"}),
-		server.WithRegistry(r))
+		server.WithRegistry(r),
+		server.WithServiceAddr(addressOp))
+
 	if err != nil {
 		panic(err)
 	}
-
-	/*
-		svr := calculator.NewServer(
-			new(CalculatorImpl),
-
-		)
-	*/
 
 	err = svc.Run()
 

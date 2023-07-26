@@ -5,6 +5,7 @@ import (
 	"context"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/bytedance/sonic"
 	"github.com/cloudwego/hertz/pkg/app"
@@ -12,6 +13,7 @@ import (
 	"github.com/cloudwego/hertz/pkg/common/ut"
 	"github.com/cloudwego/hertz/pkg/route"
 	"github.com/cloudwego/thriftgo/pkg/test"
+	"github.com/hertz-contrib/cors"
 	"github.com/yiwen101/CardWizards/pkg/proxy"
 	"github.com/yiwen101/CardWizards/pkg/router"
 	"github.com/yiwen101/CardWizards/pkg/store"
@@ -19,40 +21,41 @@ import (
 
 var testRouter *route.Engine
 
+// todo adjust according to the change in the frontend
 func TestAdmin(t *testing.T) {
 	store.InfoStore.Load("proxyAddress", "../../testing/idl", "")
 	testRouter = route.NewEngine(config.NewOptions([]config.Option{}))
-	TestregisterAdmin(testRouter)
-	TestregisterProxy(testRouter)
+	testRegisterAdmin(testRouter)
+	testRegisterProxy(testRouter)
 
 	bytes, code := call("GET", "/admin/service")
 	test.Assert(t, code == http.StatusOK)
-	var j map[string]interface{}
-	err := sonic.Unmarshal(bytes, &j)
+	var servs []serviceInfo
+	err := sonic.Unmarshal(bytes, &servs)
 	test.Assert(t, err == nil, err)
 
 	bytes, code = call("GET", "/admin/service/arithmetic")
 	test.Assert(t, code == http.StatusOK)
-	j = make(map[string]interface{})
-	err = sonic.Unmarshal(bytes, &j)
+	var serv serviceInfo
+	err = sonic.Unmarshal(bytes, &serv)
 	test.Assert(t, err == nil, err)
 
 	bytes, code = call("GET", "/admin/api/arithmetic/Add")
 	test.Assert(t, code == http.StatusOK)
-	j = make(map[string]interface{})
-	err = sonic.Unmarshal(bytes, &j)
+	var aInfo apiInfo
+	err = sonic.Unmarshal(bytes, &aInfo)
 	test.Assert(t, err == nil, err)
 
 	bytes, code = call("GET", "/admin/api/arithmetic")
 	test.Assert(t, code == http.StatusOK)
-	j = make(map[string]interface{})
-	err = sonic.Unmarshal(bytes, &j)
+	var aInfos []apiInfo
+	err = sonic.Unmarshal(bytes, &aInfos)
 	test.Assert(t, err == nil, err)
 
 	bytes, code = call("GET", "/admin/route/arithmetic/Add")
 	test.Assert(t, code == http.StatusOK)
-	a := []struct{ httpMethod, url string }{}
-	err = sonic.Unmarshal(bytes, &a)
+	var rInfo []routeInfo
+	err = sonic.Unmarshal(bytes, &rInfo)
 	test.Assert(t, err == nil, err)
 
 	bytes, code = call("GET", "/admin/proxy")
@@ -112,19 +115,19 @@ func TestAdmin(t *testing.T) {
 	_, code = call("POST", "/admin/service/fake.thrift/cluster1")
 	test.Assert(t, code != 200)
 
-	_, code = call("POST", "/admin/route/arithmetic/Add/GET/test")
+	_, code = callWithBody("POST", "/admin/route/arithmetic/Add", routeInfo{HttpMethod: "GET", Url: "test"})
 	test.Assert(t, code == http.StatusOK)
 	_, ok := router.GetRoute("GET", "/test")
 	test.Assert(t, ok)
 
-	_, code = call("PUT", "/admin/route/arithmetic/Add/GET/test/GET/test2")
+	_, code = callWithBody("PUT", "/admin/route/arithmetic/Add", routeUpdate{routeInfo{HttpMethod: "GET", Url: "test"}, routeInfo{HttpMethod: "GET", Url: "test2"}})
 	test.Assert(t, code == http.StatusOK)
 	_, ok = router.GetRoute("GET", "/test2")
 	test.Assert(t, ok)
 	_, ok = router.GetRoute("GET", "/test")
 	test.Assert(t, !ok)
 
-	_, code = call("DELETE", "/admin/route/arithmetic/Add/GET/test2")
+	_, code = callWithBody("DELETE", "/admin/route/arithmetic/Add", routeInfo{HttpMethod: "GET", Url: "test2"})
 	test.Assert(t, code == http.StatusOK)
 	_, ok = router.GetRoute("GET", "/test2")
 	test.Assert(t, !ok)
@@ -133,8 +136,8 @@ func TestAdmin(t *testing.T) {
 func TestPassword(t *testing.T) {
 	store.InfoStore.Load("proxyAddress", "../../testing/idl", "password")
 	testRouter = route.NewEngine(config.NewOptions([]config.Option{}))
-	TestregisterAdmin(testRouter)
-	TestregisterProxy(testRouter)
+	testRegisterAdmin(testRouter)
+	testRegisterProxy(testRouter)
 
 	w := ut.PerformRequest(
 		testRouter,
@@ -159,9 +162,17 @@ func TestPassword(t *testing.T) {
 
 }
 
-func TestregisterAdmin(r *route.Engine) {
+// make sure this function's body is indentical to the function Register
+func testRegisterAdmin(r *route.Engine) {
 	admin := r.Group("/admin")
-
+	admin.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"http://localhost:3000"},                   // Update this to match your frontend URL
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE"},            // Add the allowed HTTP methods
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"}, // Add the allowed request headers
+		ExposeHeaders:    []string{"Content-Length"},                          // Expose additional response headers if needed
+		AllowCredentials: true,                                                // Allow credentials (e.g., cookies, authorization headers)
+		MaxAge:           12 * time.Hour,                                      // Set the preflight request cache duration
+	}))
 	password := store.InfoStore.Password
 	if password != "" {
 		admin.Use(func(ctx context.Context, c *app.RequestContext) {
@@ -173,13 +184,17 @@ func TestregisterAdmin(r *route.Engine) {
 
 	admin.GET("/service",
 		func(ctx context.Context, c *app.RequestContext) {
-
-			m, err := store.InfoStore.GetAllServiceNames()
+			services, err := store.InfoStore.GetAllServiceNames()
 			if err != nil {
 				c.String(http.StatusInternalServerError, err.Error())
 				return
 			}
-			c.JSON(http.StatusOK, m)
+			result := []serviceInfo{}
+
+			for _, meta := range services {
+				result = append(result, translateService(meta))
+			}
+			c.JSON(http.StatusOK, result)
 		})
 	admin.GET("/service/:serviceName",
 		func(ctx context.Context, c *app.RequestContext) {
@@ -188,7 +203,7 @@ func TestregisterAdmin(r *route.Engine) {
 				c.String(http.StatusInternalServerError, err.Error())
 				return
 			}
-			c.JSON(http.StatusOK, s)
+			c.JSON(http.StatusOK, translateService(s))
 		})
 	admin.GET("/api/:serviceName/:methodName",
 		func(ctx context.Context, c *app.RequestContext) {
@@ -197,61 +212,32 @@ func TestregisterAdmin(r *route.Engine) {
 				c.String(http.StatusInternalServerError, err.Error())
 				return
 			}
-			routes := []struct {
-				httpMethod string
-				url        string
-			}{}
-			for httpMethod, value := range s.Routes {
-				for url := range value {
-					routes = append(routes, struct {
-						httpMethod string
-						url        string
-					}{httpMethod, url})
-				}
-			}
 
-			result := struct {
-				serviceName string
-				methodName  string
-				apiStatus   bool
-				routes      []struct {
-					httpMethod string
-					url        string
-				}
-				validationStatus bool
-			}{s.ServiceName, s.MethodName, s.IsOn, routes, s.ValidationOn}
-			c.JSON(http.StatusOK, result)
+			c.JSON(http.StatusOK, translateAPI(s))
 		})
 	admin.GET("/api/:serviceName",
 		func(ctx context.Context, c *app.RequestContext) {
-			s, err := store.InfoStore.GetAPIs(c.Param("serviceName"))
+			s, err := store.InfoStore.GetServiceInfo(c.Param("serviceName"))
 			if err != nil {
 				c.String(http.StatusInternalServerError, err.Error())
 				return
 			}
-			c.JSON(http.StatusOK, s)
+			apis := []apiInfo{}
+			for _, api := range s.APIs {
+				apis = append(apis, translateAPI(api))
+			}
+
+			c.JSON(http.StatusOK, apis)
 		})
 	admin.GET("/route/:serviceName/:methodName",
 		func(ctx context.Context, c *app.RequestContext) {
-			s, err := store.InfoStore.GetRoutes(c.Param("serviceName"), c.Param("methodName"))
+			s, err := store.InfoStore.CheckAPIStatus(c.Param("serviceName"), c.Param("methodName"))
 			if err != nil {
 				c.String(http.StatusInternalServerError, err.Error())
 				return
 			}
-			result := []struct {
-				httpMethod string
-				url        string
-			}{}
-			for httpMethod, value := range s {
-				for url := range value {
-					result = append(result, struct {
-						httpMethod string
-						url        string
-					}{httpMethod, url})
-				}
-			}
 
-			c.JSON(http.StatusOK, result)
+			c.JSON(http.StatusOK, buildRoutesFromApi(s))
 		})
 	admin.GET("/proxy",
 		func(ctx context.Context, c *app.RequestContext) {
@@ -269,7 +255,7 @@ func TestregisterAdmin(r *route.Engine) {
 				c.String(http.StatusInternalServerError, err.Error())
 				return
 			}
-			c.JSON(http.StatusOK, s)
+			c.JSON(http.StatusOK, translateLB(s))
 		})
 	admin.PUT("/proxy",
 		func(ctx context.Context, c *app.RequestContext) {
@@ -370,7 +356,6 @@ func TestregisterAdmin(r *route.Engine) {
 
 			c.String(http.StatusOK, "Validation status updated")
 		})
-
 	admin.POST("/service/:idlFileName/:clusterName",
 		func(ctx context.Context, c *app.RequestContext) {
 			err := store.InfoStore.AddService(c.Param("idlFileName"), c.Param("clusterName"))
@@ -398,27 +383,61 @@ func TestregisterAdmin(r *route.Engine) {
 			}
 			c.String(http.StatusOK, "Service is removed")
 		})
-	admin.POST("/route/:serviceName/:methodName/:httpMethod/:url",
+	admin.POST("/route/:serviceName/:methodName",
 		func(ctx context.Context, c *app.RequestContext) {
-			err := store.InfoStore.AddRoute(c.Param("serviceName"), c.Param("methodName"), c.Param("httpMethod"), "/"+c.Param("url"))
+			bytes, err := c.Body()
+			if err != nil {
+				c.String(http.StatusInternalServerError, err.Error())
+				return
+			}
+			var b routeInfo
+			err = sonic.Unmarshal(bytes, &b)
+			if err != nil {
+				c.String(http.StatusInternalServerError, err.Error())
+				return
+			}
+
+			err = store.InfoStore.AddRoute(c.Param("serviceName"), c.Param("methodName"), b.HttpMethod, "/"+b.Url)
 			if err != nil {
 				c.String(http.StatusInternalServerError, err.Error())
 				return
 			}
 			c.String(http.StatusOK, "Route is added")
 		})
-	admin.PUT("/route/:serviceName/:methodName/:httpMethod/:url/:newHttpMethod/:newUrl",
+	admin.PUT("/route/:serviceName/:methodName",
 		func(ctx context.Context, c *app.RequestContext) {
-			err := store.InfoStore.ModifyRoute(c.Param("serviceName"), c.Param("methodName"), c.Param("httpMethod"), "/"+c.Param("url"), c.Param("newHttpMethod"), "/"+c.Param("newUrl"))
+			bytes, err := c.Body()
+			if err != nil {
+				c.String(http.StatusInternalServerError, err.Error())
+				return
+			}
+			var b routeUpdate
+			err = sonic.Unmarshal(bytes, &b)
+			if err != nil {
+				c.String(http.StatusInternalServerError, err.Error())
+				return
+			}
+			err = store.InfoStore.ModifyRoute(c.Param("serviceName"), c.Param("methodName"), b.OldRoute.HttpMethod, "/"+b.OldRoute.Url, b.NewRoute.HttpMethod, "/"+b.NewRoute.Url)
 			if err != nil {
 				c.String(http.StatusInternalServerError, err.Error())
 				return
 			}
 			c.String(http.StatusOK, "Route is updated")
 		})
-	admin.DELETE("/route/:serviceName/:methodName/:httpMethod/:url",
+	admin.DELETE("/route/:serviceName/:methodName",
 		func(ctx context.Context, c *app.RequestContext) {
-			err := store.InfoStore.RemoveRoute(c.Param("serviceName"), c.Param("methodName"), c.Param("httpMethod"), "/"+c.Param("url"))
+			bytes, err := c.Body()
+			if err != nil {
+				c.String(http.StatusInternalServerError, err.Error())
+				return
+			}
+			var b routeInfo
+			err = sonic.Unmarshal(bytes, &b)
+			if err != nil {
+				c.String(http.StatusInternalServerError, err.Error())
+				return
+			}
+			err = store.InfoStore.RemoveRoute(c.Param("serviceName"), c.Param("methodName"), b.HttpMethod, "/"+b.Url)
 			if err != nil {
 				c.String(http.StatusInternalServerError, err.Error())
 				return
@@ -436,7 +455,7 @@ func TestregisterAdmin(r *route.Engine) {
 		})
 }
 
-func TestregisterProxy(r *route.Engine) {
+func testRegisterProxy(r *route.Engine) {
 	r.GET("/*:test",
 		func(ctx context.Context, c *app.RequestContext) {
 			proxy.Proxy.Serve(ctx, c, nil)
@@ -448,7 +467,7 @@ func call(method string, url string) ([]byte, int) {
 	return w.Result().Body(), w.Result().StatusCode()
 }
 
-func callWithBody(method string, url string, body bool) ([]byte, int) {
+func callWithBody(method string, url string, body interface{}) ([]byte, int) {
 	bs, _ := sonic.Marshal(body)
 	b := bytes.NewBuffer(bs)
 	w := ut.PerformRequest(testRouter, method, url, &ut.Body{Body: b, Len: b.Len()}, ut.Header{Key: "Content-Type", Value: "application/json"})

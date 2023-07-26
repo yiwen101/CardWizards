@@ -209,6 +209,7 @@ func (s *Store) GetAPIs(serviceName string) (map[string]*ApiMeta, error) {
 	return meta.APIs, nil
 }
 
+// generate default route under GET /:serviceName/:methodName
 func (s *Store) AddService(idlFileName, clusterName string) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
@@ -330,6 +331,9 @@ func (s *Store) TurnOnAPI(serviceName, methodName string) error {
 
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+	if api.IsOn {
+		return nil
+	}
 	api.IsOn = true
 	notifyStatechange(s.apiStateListeners, serviceName, methodName, true)
 	return nil
@@ -343,6 +347,9 @@ func (s *Store) TurnOffAPI(serviceName, methodName string) error {
 
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+	if !api.IsOn {
+		return nil
+	}
 	api.IsOn = false
 	notifyStatechange(s.apiStateListeners, serviceName, methodName, false)
 	return nil
@@ -355,6 +362,9 @@ func (s *Store) TurnOnValidation(serviceName, methodName string) error {
 	}
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+	if api.ValidationOn {
+		return nil
+	}
 	api.ValidationOn = true
 	notifyStatechange(s.apiValidationListeners, serviceName, methodName, true)
 	return nil
@@ -367,6 +377,9 @@ func (s *Store) TurnOffValidation(serviceName, methodName string) error {
 	}
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+	if !api.ValidationOn {
+		return nil
+	}
 	api.ValidationOn = false
 	notifyStatechange(s.apiValidationListeners, serviceName, methodName, false)
 	return nil

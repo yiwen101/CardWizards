@@ -4,7 +4,10 @@ package proxy
 
 import (
 	"context"
+	"fmt"
+	"log"
 	"net/http"
+	"strings"
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/app/server"
@@ -83,7 +86,8 @@ func proxyGateHandler(ctx context.Context, c *app.RequestContext, route *router.
 func contentTypeHandler(ctx context.Context, c *app.RequestContext, route *router.RouteData) (*router.RouteData, bool) {
 	bytes := c.ContentType()
 	str := string(bytes)
-	if str != "application/json" {
+
+	if !strings.Contains(str, "application/json") {
 		c.String(http.StatusBadRequest, "Invalid Content-Type: "+str)
 		return nil, false
 	}
@@ -151,7 +155,8 @@ func mainHandler(ctx context.Context, c *app.RequestContext, route *router.Route
 
 	genericResponse, err := client.GenericCall(ctx, route.MethodName, string(jsonbytes))
 	if err != nil {
-		c.String(http.StatusBadRequest, err.Error())
+		c.String(http.StatusBadGateway, "GenericCall failed, error: "+err.Error())
+		log.Println(fmt.Sprintf("GenericCall failed for %s, error: %s", route.ServiceName, err.Error()))
 		return nil, false
 	}
 	str, ok := genericResponse.(string)

@@ -16,7 +16,7 @@ import (
 	"github.com/yiwen101/CardWizards/pkg/store"
 )
 
-// // turn on the kitex server and nacos server before run this test
+// turn on the kitex server and nacos server before run this test
 func TestPerformRequest(t *testing.T) {
 	store.InfoStore.Load("", "../../testing/idl", "")
 	router := route.NewEngine(config.NewOptions([]config.Option{}))

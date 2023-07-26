@@ -172,7 +172,7 @@ func getServiceLoadBalancerOption(meta *store.ServiceMeta) (client.Option, error
 		return client.WithLoadBalancer(loadbalance.NewWeightedBalancer()), nil
 	case "random":
 		return client.WithLoadBalancer(loadbalance.NewWeightedRandomBalancer()), nil
-	case "roundrobin":
+	case "roundRobin":
 		return client.WithLoadBalancer(loadbalance.NewWeightedRoundRobinBalancer()), nil
 	default:
 		return client.Option{}, fmt.Errorf("load balance choice %s not supported", lbChoice)
