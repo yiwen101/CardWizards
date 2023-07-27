@@ -39,6 +39,9 @@ func (d *descriptorKeeper) Get() (*descriptor.ServiceDescriptor, error) {
 	}
 	return svcDsc, nil
 }
+func (d *descriptorKeeper) GetFileName() (string, error) {
+	return d.fileName, nil
+}
 func (d *descriptorKeeper) validateMethodName(methodName string) error {
 	sd, err := d.Get()
 	if err != nil {

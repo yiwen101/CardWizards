@@ -5,9 +5,11 @@ import (
 	"log"
 	"os"
 	"sync"
+
+	"github.com/yiwen101/CardWizards/pkg/utils"
 )
 
-//todo improve performance by adding multiple mutexes
+//todo: improve performance by using multiple mutexes and concurrent map; not the bottleneck for now
 
 type Admin interface {
 	GetAllServiceNames() (map[string]*ServiceMeta, error)
@@ -79,7 +81,7 @@ func (s *Store) Load(ProxyAddress, IdlFolderRelativePath, password string) {
 		waitGroup.Add(1)
 
 		go func(fileName, clusterName string) {
-			err := s.AddService(fileName, clusterName)
+			_, err := s.AddService(fileName, clusterName)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -210,21 +212,21 @@ func (s *Store) GetAPIs(serviceName string) (map[string]*ApiMeta, error) {
 }
 
 // generate default route under GET /:serviceName/:methodName
-func (s *Store) AddService(idlFileName, clusterName string) error {
+func (s *Store) AddService(idlFileName, clusterName string) (string, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	dk, err := buildDescriptorKeeperFromPath(idlFileName, s.IdlFolderRelativePath)
 	if err != nil {
-		return err
+		return "", err
 	}
 	sd, err := dk.Get()
 	if err != nil {
-		return err
+		return "", err
 	}
 	serviceName := sd.Name
 	_, ok := s.ServicesMap[serviceName]
 	if ok {
-		return fmt.Errorf("service %s already exists", serviceName)
+		return "", fmt.Errorf("service %s already exists", serviceName)
 	}
 
 	result := map[string]*ApiMeta{}
@@ -252,7 +254,7 @@ func (s *Store) AddService(idlFileName, clusterName string) error {
 		APIs:   result,
 	}
 	notifyStatechange(s.ServiceMapListeners, true, s.ServicesMap[serviceName])
-	return nil
+	return serviceName, nil
 }
 
 func (s *Store) RemoveService(serviceName string) error {
@@ -271,10 +273,10 @@ func (s *Store) RemoveService(serviceName string) error {
 	return err
 }
 
-func (s *Store) UpdateService(serviceName, idlFileName, clusterName string) error {
+func (s *Store) UpdateService(serviceName, idlFileName, clusterName string) (string, error) {
 	err := s.RemoveService(serviceName)
 	if err != nil {
-		return err
+		return "", err
 	}
 	return s.AddService(idlFileName, clusterName)
 }
@@ -386,6 +388,18 @@ func (s *Store) TurnOffValidation(serviceName, methodName string) error {
 }
 
 func (s *Store) AddRoute(serviceName, methodName, httpMethod, url string) error {
+	httpMethodsArray := utils.HTTPMethods()
+	ok := false
+	for _, value := range httpMethodsArray {
+		if value == httpMethod {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		return fmt.Errorf("http method %s not supported", httpMethod)
+	}
+
 	api, err := s.CheckAPIStatus(serviceName, methodName)
 	if err != nil {
 		return err
@@ -465,4 +479,14 @@ func (s *Store) SetLbType(serviceName, lbType string) error {
 	meta.LbType = lbType
 	notifyStatechange(s.lbStateListners, meta)
 	return nil
+}
+
+func (s *Store) GetIdlFileName(serviceName string) (string, error) {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+	meta, ok := s.ServicesMap[serviceName]
+	if !ok {
+		return "", fmt.Errorf("service %s not found", serviceName)
+	}
+	return meta.Descriptor.GetFileName()
 }

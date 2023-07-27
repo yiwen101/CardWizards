@@ -5,7 +5,6 @@ import (
 	"context"
 	"net/http"
 	"testing"
-	"time"
 
 	"github.com/bytedance/sonic"
 	"github.com/cloudwego/hertz/pkg/app"
@@ -13,7 +12,6 @@ import (
 	"github.com/cloudwego/hertz/pkg/common/ut"
 	"github.com/cloudwego/hertz/pkg/route"
 	"github.com/cloudwego/thriftgo/pkg/test"
-	"github.com/hertz-contrib/cors"
 	"github.com/yiwen101/CardWizards/pkg/proxy"
 	"github.com/yiwen101/CardWizards/pkg/router"
 	"github.com/yiwen101/CardWizards/pkg/store"
@@ -52,9 +50,9 @@ func TestAdmin(t *testing.T) {
 	err = sonic.Unmarshal(bytes, &aInfos)
 	test.Assert(t, err == nil, err)
 
-	bytes, code = call("GET", "/admin/route/arithmetic/Add")
+	bytes, code = call("GET", "/admin/route/GET/arithmetic/Add")
 	test.Assert(t, code == http.StatusOK)
-	var rInfo []routeInfo
+	var rInfo routeInfo
 	err = sonic.Unmarshal(bytes, &rInfo)
 	test.Assert(t, err == nil, err)
 
@@ -63,17 +61,6 @@ func TestAdmin(t *testing.T) {
 	var b bool
 	err = sonic.Unmarshal(bytes, &b)
 	test.Assert(t, err == nil, err)
-
-	bytes, code = call("GET", "/admin/lb/arithmetic")
-	test.Assert(t, code == http.StatusOK)
-	var s string
-	err = sonic.Unmarshal(bytes, &s)
-	test.Assert(t, err == nil, err)
-	_, code = call("PUT", "/admin/lb/arithmetic/random")
-	test.Assert(t, code == http.StatusOK)
-	serviceMeta, err := store.InfoStore.GetServiceInfo("arithmetic")
-	test.Assert(t, err == nil)
-	test.Assert(t, serviceMeta.LbType == "random")
 
 	_, code = callWithBody("PUT", "/admin/proxy", false)
 	test.Assert(t, code == http.StatusOK)
@@ -85,49 +72,39 @@ func TestAdmin(t *testing.T) {
 	test.Assert(t, code == http.StatusOK)
 	_, err = store.InfoStore.GetServiceInfo("arithmetic")
 	test.Assert(t, err != nil)
-	_, code = call("POST", "/admin/service/arithmetic.thrift/cluster1")
+	_, code = callWithBody("POST", "/admin/service", serviceInfo{ReloadIDL: true, IdlFileName: "arithmetic.thrift", ClusterName: "arithmetic", LoadBalanceOption: "weighted random"})
 	test.Assert(t, code == http.StatusOK)
 	_, err = store.InfoStore.GetServiceInfo("arithmetic")
 	test.Assert(t, err == nil)
 
-	_, code = callWithBody("PUT", "/admin/api/arithmetic/Add", false)
+	_, code = callWithBody("PUT", "/admin/api/arithmetic/Add", apiInfo{ServiceName: "arithmetic", MethodName: "Add", IsSleeping: true, ValidationStatus: true})
 	test.Assert(t, code == http.StatusOK)
 	meta, err := store.InfoStore.CheckAPIStatus("arithmetic", "Add")
 	test.Assert(t, err == nil)
 	test.Assert(t, !meta.IsOn)
-
-	_, code = callWithBody("PUT", "/admin/service/arithmetic", true)
-	test.Assert(t, code == http.StatusOK)
-	meta, err = store.InfoStore.CheckAPIStatus("arithmetic", "Add")
-	test.Assert(t, err == nil)
-	test.Assert(t, meta.IsOn)
-
-	callWithBody("PUT", "/admin/validation/arithmetic/Add", true)
-	meta, err = store.InfoStore.CheckAPIStatus("arithmetic", "Add")
-	test.Assert(t, err == nil)
 	test.Assert(t, meta.ValidationOn)
 
-	_, code = call("PUT", "/admin/service/arithmetic/arithmetic.thrift/mockCluster")
+	_, code = callWithBody("PUT", "/admin/service/arithmetic", serviceInfo{ReloadIDL: true, ServiceName: "arithmetic", IdlFileName: "arithmetic.thrift", ClusterName: "mockCluster", LoadBalanceOption: "weighted random"})
 	test.Assert(t, code == http.StatusOK)
-	serviceMeta, err = store.InfoStore.GetServiceInfo("arithmetic")
+	serviceMeta, err := store.InfoStore.GetServiceInfo("arithmetic")
 	test.Assert(t, err == nil)
 	test.Assert(t, serviceMeta.ClusterName == "mockCluster")
-	_, code = call("POST", "/admin/service/fake.thrift/cluster1")
+	_, code = callWithBody("POST", "/admin/service", serviceInfo{ReloadIDL: true, ServiceName: "arithmetic", IdlFileName: "arithmetic.protobuf", ClusterName: "arithmetic", LoadBalanceOption: "weighted random"})
 	test.Assert(t, code != 200)
 
-	_, code = callWithBody("POST", "/admin/route/arithmetic/Add", routeInfo{HttpMethod: "GET", Url: "test"})
+	_, code = callWithBody("POST", "/admin/route", routeInfo{ServiceName: "arithmetic", MethodName: "Add", HttpMethod: "GET", Url: "/test"})
 	test.Assert(t, code == http.StatusOK)
 	_, ok := router.GetRoute("GET", "/test")
 	test.Assert(t, ok)
 
-	_, code = callWithBody("PUT", "/admin/route/arithmetic/Add", routeUpdate{routeInfo{HttpMethod: "GET", Url: "test"}, routeInfo{HttpMethod: "GET", Url: "test2"}})
+	_, code = callWithBody("PUT", "/admin/route/GET/test", routeInfo{ServiceName: "arithmetic", MethodName: "Add", HttpMethod: "GET", Url: "/test2"})
 	test.Assert(t, code == http.StatusOK)
 	_, ok = router.GetRoute("GET", "/test2")
 	test.Assert(t, ok)
 	_, ok = router.GetRoute("GET", "/test")
 	test.Assert(t, !ok)
 
-	_, code = callWithBody("DELETE", "/admin/route/arithmetic/Add", routeInfo{HttpMethod: "GET", Url: "test2"})
+	_, code = call("DELETE", "/admin/route/GET/test2")
 	test.Assert(t, code == http.StatusOK)
 	_, ok = router.GetRoute("GET", "/test2")
 	test.Assert(t, !ok)
@@ -165,14 +142,17 @@ func TestPassword(t *testing.T) {
 // make sure this function's body is indentical to the function Register
 func testRegisterAdmin(r *route.Engine) {
 	admin := r.Group("/admin")
-	admin.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:3000"},                   // Update this to match your frontend URL
-		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE"},            // Add the allowed HTTP methods
-		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"}, // Add the allowed request headers
-		ExposeHeaders:    []string{"Content-Length"},                          // Expose additional response headers if needed
-		AllowCredentials: true,                                                // Allow credentials (e.g., cookies, authorization headers)
-		MaxAge:           12 * time.Hour,                                      // Set the preflight request cache duration
-	}))
+	/*
+		admin.Use(cors.New(cors.Config{
+			AllowAllOrigins:  true,
+			//AllowOrigins:     []string{"http://localhost:3000"},                   // Update this to match your frontend URL
+			AllowMethods:     []string{"GET", "POST", "PUT", "DELETE"},            // Add the allowed HTTP methods
+			AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"}, // Add the allowed request headers
+			ExposeHeaders:    []string{"Content-Length"},                          // Expose additional response headers if needed
+			AllowCredentials: true,                                                // Allow credentials (e.g., cookies, authorization headers)
+			MaxAge:           12 * time.Hour,                                      // Set the preflight request cache duration
+		}))
+	*/
 	password := store.InfoStore.Password
 	if password != "" {
 		admin.Use(func(ctx context.Context, c *app.RequestContext) {
@@ -186,7 +166,7 @@ func testRegisterAdmin(r *route.Engine) {
 		func(ctx context.Context, c *app.RequestContext) {
 			services, err := store.InfoStore.GetAllServiceNames()
 			if err != nil {
-				c.String(http.StatusInternalServerError, err.Error())
+				c.JSON(http.StatusInternalServerError, err.Error())
 				return
 			}
 			result := []serviceInfo{}
@@ -200,26 +180,156 @@ func testRegisterAdmin(r *route.Engine) {
 		func(ctx context.Context, c *app.RequestContext) {
 			s, err := store.InfoStore.GetServiceInfo(c.Param("serviceName"))
 			if err != nil {
-				c.String(http.StatusInternalServerError, err.Error())
+				c.JSON(http.StatusNotFound, err.Error())
 				return
 			}
 			c.JSON(http.StatusOK, translateService(s))
 		})
+	admin.POST("/service",
+		func(ctx context.Context, c *app.RequestContext) {
+			bytes, err := c.Body()
+			if err != nil {
+				c.JSON(http.StatusBadRequest, err.Error())
+				return
+			}
+			var b serviceInfo
+			err = sonic.Unmarshal(bytes, &b)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, err.Error())
+				return
+			}
+			serviceName, err := store.InfoStore.AddService(b.IdlFileName, b.ClusterName)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, err.Error())
+				return
+			}
+			serviceMeta, err := store.InfoStore.GetServiceInfo(serviceName)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, err.Error())
+				return
+			}
+
+			newLb, ok := parseLB(b.LoadBalanceOption)
+			if !ok {
+				c.JSON(http.StatusBadRequest, "invalid load balance option")
+				return
+			}
+			if newLb != serviceMeta.LbType {
+				err = store.InfoStore.SetLbType(serviceName, newLb)
+				if err != nil {
+					c.JSON(http.StatusBadRequest, err.Error())
+					return
+				}
+			}
+			if b.IsSleeping {
+				err = store.InfoStore.TurnOffService(serviceName)
+				if err != nil {
+					c.JSON(http.StatusBadRequest, err.Error())
+					return
+				}
+			}
+			serviceMeta, _ = store.InfoStore.GetServiceInfo(serviceName)
+
+			c.JSON(http.StatusOK, translateService(serviceMeta))
+		})
+	admin.PUT("/service/:serviceName",
+		func(ctx context.Context, c *app.RequestContext) {
+
+			bytes, err := c.Body()
+			if err != nil {
+				c.JSON(http.StatusBadRequest, err.Error())
+				return
+			}
+			var b serviceInfo
+			err = sonic.Unmarshal(bytes, &b)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, err.Error())
+				return
+			}
+			if b.ServiceName != c.Param("serviceName") {
+				c.JSON(http.StatusBadRequest, "service name does not match")
+				return
+			}
+			serviceMeta, err := store.InfoStore.GetServiceInfo(c.Param("serviceName"))
+			if err != nil {
+				c.JSON(http.StatusBadRequest, "invalid service name")
+				return
+			}
+
+			newLb, ok := parseLB(b.LoadBalanceOption)
+			if !ok {
+				c.JSON(http.StatusBadRequest, "invalid load balance option")
+				return
+			}
+			ServiceName := b.ServiceName
+			if b.ClusterName != serviceMeta.ClusterName || b.ReloadIDL {
+				ServiceName, err = store.InfoStore.UpdateService(b.ServiceName, b.IdlFileName, b.ClusterName)
+				if err != nil {
+					c.JSON(http.StatusBadRequest, err.Error())
+					return
+				}
+				serviceMeta, err = store.InfoStore.GetServiceInfo(ServiceName)
+				if err != nil {
+					c.JSON(http.StatusInternalServerError, err.Error())
+					return
+				}
+			}
+
+			if newLb != serviceMeta.LbType {
+				err = store.InfoStore.SetLbType(ServiceName, newLb)
+				if err != nil {
+					c.JSON(http.StatusInternalServerError, err.Error())
+					return
+				}
+			}
+
+			if b.IsSleeping != isSleeping(serviceMeta) {
+				if !b.IsSleeping {
+					err = store.InfoStore.TurnOnService(c.Param("serviceName"))
+				} else {
+					err = store.InfoStore.TurnOffService(c.Param("serviceName"))
+				}
+			}
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, err.Error())
+				return
+			}
+
+			serviceMeta, err = store.InfoStore.GetServiceInfo(ServiceName)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, err.Error())
+				return
+			}
+
+			c.JSON(http.StatusOK, translateService(serviceMeta))
+
+		})
+	admin.DELETE("/service/:serviceName",
+		func(ctx context.Context, c *app.RequestContext) {
+			err := store.InfoStore.RemoveService(c.Param("serviceName"))
+			if err != nil {
+				c.JSON(http.StatusNotFound, err.Error())
+				return
+			}
+			c.JSON(http.StatusOK, "Service is removed")
+		})
+
 	admin.GET("/api/:serviceName/:methodName",
 		func(ctx context.Context, c *app.RequestContext) {
 			s, err := store.InfoStore.CheckAPIStatus(c.Param("serviceName"), c.Param("methodName"))
 			if err != nil {
-				c.String(http.StatusInternalServerError, err.Error())
+				c.JSON(http.StatusNotFound, err.Error())
 				return
 			}
 
 			c.JSON(http.StatusOK, translateAPI(s))
 		})
+
 	admin.GET("/api/:serviceName",
 		func(ctx context.Context, c *app.RequestContext) {
 			s, err := store.InfoStore.GetServiceInfo(c.Param("serviceName"))
 			if err != nil {
-				c.String(http.StatusInternalServerError, err.Error())
+				c.JSON(http.StatusNotFound, err.Error())
 				return
 			}
 			apis := []apiInfo{}
@@ -229,45 +339,98 @@ func testRegisterAdmin(r *route.Engine) {
 
 			c.JSON(http.StatusOK, apis)
 		})
-	admin.GET("/route/:serviceName/:methodName",
+	admin.GET("/api",
 		func(ctx context.Context, c *app.RequestContext) {
-			s, err := store.InfoStore.CheckAPIStatus(c.Param("serviceName"), c.Param("methodName"))
+			services, err := store.InfoStore.GetAllServiceNames()
 			if err != nil {
-				c.String(http.StatusInternalServerError, err.Error())
+				c.JSON(http.StatusInternalServerError, err.Error())
+				return
+			}
+			apis := []apiInfo{}
+			for _, service := range services {
+				for _, api := range service.APIs {
+					apis = append(apis, translateAPI(api))
+				}
+			}
+			c.JSON(http.StatusOK, apis)
+		})
+
+	admin.PUT("/api/:serviceName/:methodName",
+		func(ctx context.Context, c *app.RequestContext) {
+			apiMeta, err := store.InfoStore.CheckAPIStatus(c.Param("serviceName"), c.Param("methodName"))
+			if err != nil {
+				c.JSON(http.StatusNotFound, err.Error())
 				return
 			}
 
-			c.JSON(http.StatusOK, buildRoutesFromApi(s))
+			bytes, err := c.Body()
+			if err != nil {
+				c.JSON(http.StatusBadRequest, err.Error())
+				return
+			}
+			var b apiInfo
+			err = sonic.Unmarshal(bytes, &b)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, err.Error())
+				return
+			}
+			if b.ServiceName != c.Param("serviceName") || b.MethodName != c.Param("methodName") {
+				c.JSON(http.StatusBadRequest, "service name or method name does not match")
+				return
+			}
+
+			if !b.IsSleeping != apiMeta.IsOn {
+				if !b.IsSleeping {
+					err = store.InfoStore.TurnOnAPI(c.Param("serviceName"), c.Param("methodName"))
+				} else {
+					err = store.InfoStore.TurnOffAPI(c.Param("serviceName"), c.Param("methodName"))
+				}
+			}
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, err.Error())
+				return
+			}
+			if b.ValidationStatus != apiMeta.ValidationOn {
+				if b.ValidationStatus {
+					err = store.InfoStore.TurnOnValidation(c.Param("serviceName"), c.Param("methodName"))
+				} else {
+					err = store.InfoStore.TurnOffValidation(c.Param("serviceName"), c.Param("methodName"))
+				}
+			}
+
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, err.Error())
+				return
+			}
+			newApi, err := store.InfoStore.CheckAPIStatus(c.Param("serviceName"), c.Param("methodName"))
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, err.Error())
+				return
+			}
+
+			c.JSON(http.StatusOK, translateAPI(newApi))
 		})
+
 	admin.GET("/proxy",
 		func(ctx context.Context, c *app.RequestContext) {
 			s, err := store.InfoStore.CheckProxyStatus()
 			if err != nil {
-				c.String(http.StatusInternalServerError, err.Error())
+				c.JSON(http.StatusInternalServerError, err.Error())
 				return
 			}
 			c.JSON(http.StatusOK, s)
-		})
-	admin.GET("/lb/:serviceName",
-		func(ctx context.Context, c *app.RequestContext) {
-			s, err := store.InfoStore.GetLbType(c.Param("serviceName"))
-			if err != nil {
-				c.String(http.StatusInternalServerError, err.Error())
-				return
-			}
-			c.JSON(http.StatusOK, translateLB(s))
 		})
 	admin.PUT("/proxy",
 		func(ctx context.Context, c *app.RequestContext) {
 			bytes, err := c.Body()
 			if err != nil {
-				c.String(http.StatusInternalServerError, err.Error())
+				c.JSON(http.StatusBadRequest, err.Error())
 				return
 			}
 			var b bool
 			err = sonic.Unmarshal(bytes, &b)
 			if err != nil {
-				c.String(http.StatusInternalServerError, err.Error())
+				c.JSON(http.StatusBadRequest, err.Error())
 				return
 			}
 			if b {
@@ -276,182 +439,105 @@ func testRegisterAdmin(r *route.Engine) {
 				err = store.InfoStore.TurnOffProxy()
 			}
 			if err != nil {
-				c.String(http.StatusInternalServerError, err.Error())
+				c.JSON(http.StatusInternalServerError, err.Error())
 				return
 			}
-			c.String(http.StatusOK, "Proxy status updated")
+			c.JSON(http.StatusOK, "Proxy status updated")
 		})
-	admin.PUT("/service/:serviceName",
-		func(ctx context.Context, c *app.RequestContext) {
-			bytes, err := c.Body()
-			if err != nil {
-				c.String(http.StatusInternalServerError, err.Error())
-				return
-			}
-			var b bool
-			err = sonic.Unmarshal(bytes, &b)
-			if err != nil {
-				c.String(http.StatusInternalServerError, err.Error())
-				return
-			}
-			if b {
-				err = store.InfoStore.TurnOnService(c.Param("serviceName"))
-			} else {
-				err = store.InfoStore.TurnOffService(c.Param("serviceName"))
-			}
-			if err != nil {
-				c.String(http.StatusInternalServerError, err.Error())
-				return
-			}
 
-			c.String(http.StatusOK, "Service status updated")
-		})
-	admin.PUT("/api/:serviceName/:methodName",
+	admin.GET("/route",
 		func(ctx context.Context, c *app.RequestContext) {
-			bytes, err := c.Body()
+			services, err := store.InfoStore.GetAllServiceNames()
 			if err != nil {
-				c.String(http.StatusInternalServerError, err.Error())
+				c.JSON(http.StatusInternalServerError, err.Error())
 				return
 			}
-			var b bool
-			err = sonic.Unmarshal(bytes, &b)
-			if err != nil {
-				c.String(http.StatusInternalServerError, err.Error())
-				return
+			routes := []routeInfo{}
+			for _, service := range services {
+				routes = append(routes, buildRoutesfromService(service)...)
 			}
-			if b {
-				err = store.InfoStore.TurnOnAPI(c.Param("serviceName"), c.Param("methodName"))
-			} else {
-				err = store.InfoStore.TurnOffAPI(c.Param("serviceName"), c.Param("methodName"))
-			}
-			if err != nil {
-				c.String(http.StatusInternalServerError, err.Error())
-				return
-			}
+			c.JSON(http.StatusOK, routes)
+		})
+	admin.GET("/route/:httpMethod/*url",
+		func(ctx context.Context, c *app.RequestContext) {
+			method, url := c.Param("httpMethod"), "/"+c.Param("url")
 
-			c.String(http.StatusOK, "Service status updated")
-		})
-	admin.PUT("/validation/:serviceName/:methodName",
+			r, ok := router.GetRoute(method, url)
+			if !ok {
+				c.JSON(http.StatusNotFound, "route not found")
+				return
+			}
+			c.JSON(http.StatusOK, routeInfo{method + url, r.ServiceName, r.MethodName, method, url})
+		},
+	)
+	admin.POST("/route",
 		func(ctx context.Context, c *app.RequestContext) {
 			bytes, err := c.Body()
 			if err != nil {
-				c.String(http.StatusInternalServerError, err.Error())
-				return
-			}
-			var b bool
-			err = sonic.Unmarshal(bytes, &b)
-			if err != nil {
-				c.String(http.StatusInternalServerError, err.Error())
-				return
-			}
-			if b {
-				err = store.InfoStore.TurnOnValidation(c.Param("serviceName"), c.Param("methodName"))
-			} else {
-				err = store.InfoStore.TurnOffValidation(c.Param("serviceName"), c.Param("methodName"))
-			}
-			if err != nil {
-				c.String(http.StatusInternalServerError, err.Error())
-				return
-			}
-
-			c.String(http.StatusOK, "Validation status updated")
-		})
-	admin.POST("/service/:idlFileName/:clusterName",
-		func(ctx context.Context, c *app.RequestContext) {
-			err := store.InfoStore.AddService(c.Param("idlFileName"), c.Param("clusterName"))
-			if err != nil {
-				c.String(http.StatusInternalServerError, err.Error())
-				return
-			}
-			c.String(http.StatusOK, "Service is added")
-		})
-	admin.PUT("/service/:serviceName/:idlFileName/:clusterName",
-		func(ctx context.Context, c *app.RequestContext) {
-			err := store.InfoStore.UpdateService(c.Param("serviceName"), c.Param("idlFileName"), c.Param("clusterName"))
-			if err != nil {
-				c.String(http.StatusInternalServerError, err.Error())
-				return
-			}
-			c.String(http.StatusOK, "Service is updated")
-		})
-	admin.DELETE("/service/:serviceName",
-		func(ctx context.Context, c *app.RequestContext) {
-			err := store.InfoStore.RemoveService(c.Param("serviceName"))
-			if err != nil {
-				c.String(http.StatusInternalServerError, err.Error())
-				return
-			}
-			c.String(http.StatusOK, "Service is removed")
-		})
-	admin.POST("/route/:serviceName/:methodName",
-		func(ctx context.Context, c *app.RequestContext) {
-			bytes, err := c.Body()
-			if err != nil {
-				c.String(http.StatusInternalServerError, err.Error())
+				c.JSON(http.StatusBadRequest, err.Error())
 				return
 			}
 			var b routeInfo
 			err = sonic.Unmarshal(bytes, &b)
 			if err != nil {
-				c.String(http.StatusInternalServerError, err.Error())
+				c.JSON(http.StatusBadRequest, err.Error())
 				return
 			}
 
-			err = store.InfoStore.AddRoute(c.Param("serviceName"), c.Param("methodName"), b.HttpMethod, "/"+b.Url)
+			err = store.InfoStore.AddRoute(b.ServiceName, b.MethodName, b.HttpMethod, b.Url)
 			if err != nil {
-				c.String(http.StatusInternalServerError, err.Error())
+				c.JSON(http.StatusBadRequest, err.Error())
 				return
 			}
-			c.String(http.StatusOK, "Route is added")
+			b.Id = b.HttpMethod + b.Url
+			c.JSON(http.StatusOK, b)
 		})
-	admin.PUT("/route/:serviceName/:methodName",
+	admin.PUT("/route/:httpMethod/*url",
 		func(ctx context.Context, c *app.RequestContext) {
+			method, url := c.Param("httpMethod"), "/"+c.Param("url")
+
+			r, ok := router.GetRoute(method, url)
+			if !ok {
+				c.JSON(http.StatusNotFound, "route not found")
+				return
+			}
 			bytes, err := c.Body()
 			if err != nil {
-				c.String(http.StatusInternalServerError, err.Error())
-				return
-			}
-			var b routeUpdate
-			err = sonic.Unmarshal(bytes, &b)
-			if err != nil {
-				c.String(http.StatusInternalServerError, err.Error())
-				return
-			}
-			err = store.InfoStore.ModifyRoute(c.Param("serviceName"), c.Param("methodName"), b.OldRoute.HttpMethod, "/"+b.OldRoute.Url, b.NewRoute.HttpMethod, "/"+b.NewRoute.Url)
-			if err != nil {
-				c.String(http.StatusInternalServerError, err.Error())
-				return
-			}
-			c.String(http.StatusOK, "Route is updated")
-		})
-	admin.DELETE("/route/:serviceName/:methodName",
-		func(ctx context.Context, c *app.RequestContext) {
-			bytes, err := c.Body()
-			if err != nil {
-				c.String(http.StatusInternalServerError, err.Error())
+				c.JSON(http.StatusBadRequest, err.Error())
 				return
 			}
 			var b routeInfo
 			err = sonic.Unmarshal(bytes, &b)
 			if err != nil {
-				c.String(http.StatusInternalServerError, err.Error())
+				c.JSON(http.StatusBadRequest, err.Error())
 				return
 			}
-			err = store.InfoStore.RemoveRoute(c.Param("serviceName"), c.Param("methodName"), b.HttpMethod, "/"+b.Url)
+			if b.MethodName != r.MethodName || b.ServiceName != r.ServiceName {
+				c.JSON(http.StatusBadRequest, "route info does not match")
+				return
+			}
+			err = store.InfoStore.ModifyRoute(b.ServiceName, b.MethodName, method, url, b.HttpMethod, b.Url)
 			if err != nil {
-				c.String(http.StatusInternalServerError, err.Error())
+				c.JSON(http.StatusBadRequest, err.Error())
 				return
 			}
-			c.String(http.StatusOK, "Route is removed")
+			c.JSON(http.StatusOK, b)
 		})
-	admin.PUT("/lb/:serviceName/:lbType",
+	admin.DELETE("/route/:httpMethod/*url",
 		func(ctx context.Context, c *app.RequestContext) {
-			err := store.InfoStore.SetLbType(c.Param("serviceName"), c.Param("lbType"))
-			if err != nil {
-				c.String(http.StatusInternalServerError, err.Error())
+			method, url := c.Param("httpMethod"), "/"+c.Param("url")
+			r, ok := router.GetRoute(method, url)
+			if !ok {
+				c.JSON(http.StatusNotFound, "route not found")
 				return
 			}
-			c.String(http.StatusOK, "LbType is set")
+
+			err := store.InfoStore.RemoveRoute(r.ServiceName, r.MethodName, method, url)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, err.Error())
+				return
+			}
+			c.JSON(http.StatusOK, "Route is removed")
 		})
 }
 

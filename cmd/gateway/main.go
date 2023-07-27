@@ -2,8 +2,10 @@ package main
 
 import (
 	"flag"
+	"time"
 
 	"github.com/cloudwego/hertz/pkg/app/server"
+	"github.com/hertz-contrib/cors"
 	"github.com/hertz-contrib/pprof"
 	"github.com/yiwen101/CardWizards/pkg/admin"
 	"github.com/yiwen101/CardWizards/pkg/proxy"
@@ -14,7 +16,7 @@ import (
 // intermediate feature: give route at command line; avoid regenerate twice;
 var (
 	addr          = flag.String("addr", "127.0.0.1:8080", "Addr: http request entrypoint")
-	pathIDL       = flag.String("idl", "../IDL", "Path: idl file path")
+	pathIDL       = flag.String("idl", "../../IDL", "Path: idl file path")
 	adminPassword = flag.String("addr-store-pwd", "", "addr Store Password")
 	//addrPPROF                     = flag.String("addr-pprof", "", "Addr: pprof addr")
 
@@ -33,6 +35,15 @@ func main() {
 	h := server.Default(
 		server.WithHostPorts(*addr),
 	)
+	h.Use(cors.New(cors.Config{
+		AllowAllOrigins: true,
+		//AllowOrigins:     []string{"http://localhost:3000"},                   // Update this to match your frontend URL
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE"},            // Add the allowed HTTP methods
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"}, // Add the allowed request headers
+		ExposeHeaders:    []string{"Content-Length"},                          // Expose additional response headers if needed
+		AllowCredentials: true,                                                // Allow credentials (e.g., cookies, authorization headers)
+		MaxAge:           12 * time.Hour,                                      // Set the preflight request cache duration
+	}))
 
 	admin.Register(h)
 	proxy.Register(h)

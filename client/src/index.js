@@ -1,13 +1,16 @@
 import React from 'react';
-import ReactDOM from 'react-dom/client';
+import ReactDOM from 'react-dom';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(
+const apiGatewayEndpoint =  process.env.Gateway_Address || 'http://127.0.0.1:8080';
+
+document.title = 'API Gateway Console'; // Replace 'Custom Page Title' with your desired page title
+
+ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <App />
+    <App addr={apiGatewayEndpoint}/>
   </React.StrictMode>
 );
 
