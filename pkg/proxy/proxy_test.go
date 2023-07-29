@@ -3,6 +3,7 @@ package proxy
 import (
 	"bytes"
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/bytedance/sonic"
@@ -14,11 +15,12 @@ import (
 	"github.com/cloudwego/thriftgo/pkg/test"
 	myRouter "github.com/yiwen101/CardWizards/pkg/router"
 	"github.com/yiwen101/CardWizards/pkg/store"
+	"github.com/yiwen101/CardWizards/pkg/utils"
 )
 
 // turn on the kitex server and nacos server before run this test
 func TestPerformRequest(t *testing.T) {
-	store.InfoStore.Load("", "../../testing/idl", "")
+	store.InfoStore.Load("", utils.PkgToIDL, "")
 	router := route.NewEngine(config.NewOptions([]config.Option{}))
 	router.GET("/*:test",
 		func(ctx context.Context, c *app.RequestContext) {
@@ -40,19 +42,20 @@ func TestPerformRequest(t *testing.T) {
 	resp = w.Result()
 
 	assert.DeepEqual(t, 400, resp.StatusCode())
-	realBody := string(resp.Body())
-	assert.DeepEqual(t, "Invalid Content-Type: ", realBody)
+	var realBody string
+	sonic.Unmarshal(resp.Body(), &realBody)
+	test.Assert(t, strings.Contains(realBody, "Invalid Content-Type"))
 
 	w = ut.PerformRequest(router, "GET", "/wrong/route", &ut.Body{Body: body, Len: len},
 		ut.Header{Key: "Content-Type", Value: "application/json"})
 	resp = w.Result()
 	assert.DeepEqual(t, 404, resp.StatusCode())
-	realBody = string(resp.Body())
+	sonic.Unmarshal(resp.Body(), &realBody)
 	assert.DeepEqual(t, "404 page not found", realBody)
 }
 
 func TestRunTimeHandlerChange(t *testing.T) {
-	store.InfoStore.Load("", "../../testing/idl", "")
+	store.InfoStore.Load("", utils.PkgToIDL, "")
 	router := route.NewEngine(config.NewOptions([]config.Option{}))
 	router.GET("/*:test",
 		func(ctx context.Context, c *app.RequestContext) {

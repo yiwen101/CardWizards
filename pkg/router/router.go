@@ -9,6 +9,25 @@ import (
 
 // router is responsible for finding the corresponding service and method according to the request path.
 
+// map of http method to map of url to route data
+var localStore map[string]*utils.MutexMap[string, *RouteData]
+
+type RouteData struct {
+	MethodName  string
+	ServiceName string
+}
+
+func init() {
+	localStore = make(map[string]*utils.MutexMap[string, *RouteData])
+	httpMethods := utils.HTTPMethods()
+	for _, method := range httpMethods {
+		localStore[method] = utils.NewMutexMap[string, *RouteData]()
+	}
+
+	store.InfoStore.RegisterApiRouteListener(&methodRouteHandeler{})
+	store.InfoStore.RegisterServiceMapListener(&serviceRouteHandeler{})
+}
+
 func GetRoute(method, url string) (*RouteData, bool) {
 	_, ok := localStore[method]
 	if !ok {
@@ -45,24 +64,7 @@ func UpdateRoute(method, url, newMethod, newUrl string) error {
 	return AddRoute(newMethod, newUrl, data)
 }
 
-var localStore map[string]*utils.MutexMap[string, *RouteData]
-
-func init() {
-	localStore = make(map[string]*utils.MutexMap[string, *RouteData])
-	httpMethods := utils.HTTPMethods()
-	for _, method := range httpMethods {
-		localStore[method] = utils.NewMutexMap[string, *RouteData]()
-	}
-
-	store.InfoStore.RegisterApiRouteListener(&methodRouteHandeler{})
-	store.InfoStore.RegisterServiceMapListener(&serviceRouteHandeler{})
-}
-
-type RouteData struct {
-	MethodName  string
-	ServiceName string
-}
-
+// called when this is adding, deleting or modifying a route
 type methodRouteHandeler struct{}
 
 func (rh *methodRouteHandeler) OnStatechanged(data ...interface{}) error {
@@ -78,6 +80,7 @@ func (rh *methodRouteHandeler) OnStatechanged(data ...interface{}) error {
 	}
 }
 
+// called when there is adding, deleting or modifying a service
 type serviceRouteHandeler struct{}
 
 func (rh *serviceRouteHandeler) OnStatechanged(data ...interface{}) error {

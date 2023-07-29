@@ -10,6 +10,15 @@ import (
 	"github.com/yiwen101/CardWizards/pkg/store"
 )
 
+/* 
+Validator package only export a Validate function that validates a request against its service desctiptor.
+
+The thrift file should follow the convention that each method takes in one arguement. For example: Add method
+takes "AddRequest" and return "AddResponse". The validator will check if the request body contains all the fields
+
+Otherwise, the function discriptor is not valid, and the validator would give the benefit of doubt and return true.
+*/
+
 func Validate(c *app.RequestContext, serviceName, methodName string) (bool, error) {
 	b, _ := c.Body()
 	var j map[string]interface{}

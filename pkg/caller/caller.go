@@ -1,8 +1,12 @@
 package caller
 
 /*
-This package is about offering the right generic client. This class should only be responsible for keeping clients
-up to date, for example when update the api by uploading a new idl file, or updating the load balance choice
+This package is about offering the right generic client. Its only responsibility is to keep the clients to offer to be
+up to date. For example when a user update a service with a new idl file, new nacos cluster name, load balance choice,
+add or delete a service, this package should be able to update the client accordingly.
+
+If new functionalities or choice is to be added in the future, for example, more client options, this package should
+register a new handelr to the store package accordingly.
 */
 
 import (
@@ -54,12 +58,15 @@ func (s *lbChangeHandler) OnStatechanged(data ...interface{}) error {
 }
 
 /*
-Choose to make my provider as the provider in the generic package seems to block infinitely after emiting
-only one instance of descriptor. But building a generic client require a channel of descriptor. The easy
-solution of rereading and parsing the file in not only expensive, but also violate the single source of truth
-principle. The service descriptors in the store package should be the only source of truth, and serviceMeta,
-apiMeta, and the whole bunch of other data (for example, client) are generared with them. So we implement
-our own provider to build the generic client
+Building a generic client require a channel of descriptor. But the provider in the generic package seems to
+block infinitely after emiting a single instance of descriptor and hence is not suitable to be store and
+reuse in the store. So we decide to store "descriptor keeper" in store and make the my provider wrapper class
+to the service descriptor returned from the store.
+
+The alternatice solution of reparsing the file in this package is rejected. That violates single responsibility and
+single source of truth principle. Store should be the only source of metaDatas (for exampele, service descriptors),
+and other data (for example, client) should be generared using the infomation in the store. So we implement our own
+provider as a wrapper class to build the generic client (which require provider, not descriptor as input)
 */
 type myProvider struct {
 	closeOnce sync.Once
@@ -75,6 +82,7 @@ func newMyProvider(svc *descriptor.ServiceDescriptor) (generic.DescriptorProvide
 }
 
 func (p *myProvider) Provide() <-chan *descriptor.ServiceDescriptor {
+	defer p.Close()
 	return p.svcs
 }
 
@@ -89,10 +97,11 @@ func (p *myProvider) Close() error {
 Generic client does not support pointer receiver, and it is too expensive to copy the whole client
 each time we make a call; so I make a wraper class here
 
-An alternative is to include the handler logic here so to reduce passing parameters via funciton on
-copy. However, it will mess up with the single responsibility principle. This class should only be
+An alternative is to include the handler logic here to reduce passing parameters on copy via funciton.
+But agian, it will mess up with the single responsibility principle. This class should only be
 responsible for keeping clients up to date,
 */
+
 type myClient struct {
 	client genericclient.Client
 }

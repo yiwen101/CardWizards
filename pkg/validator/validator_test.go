@@ -5,11 +5,12 @@ import (
 
 	"github.com/cloudwego/thriftgo/pkg/test"
 	"github.com/yiwen101/CardWizards/pkg/store"
+	"github.com/yiwen101/CardWizards/pkg/utils"
 )
 
 /* tested: validateBody, NewValidatorFor */
 func TestValidateBody(t *testing.T) {
-	store.InfoStore.Load("", "../../../testing/idl", "")
+	store.InfoStore.Load("", utils.PkgToIDL, "")
 	meta, _ := store.InfoStore.GetServiceInfo("arithmetic")
 	desc, _ := meta.Descriptor.Get()
 	fuc, _ := desc.LookupFunctionByMethod("Add")

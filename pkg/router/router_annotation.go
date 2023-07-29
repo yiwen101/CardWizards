@@ -1,6 +1,10 @@
 package router
 
 /*
+Used to be for route generation from thrift file annotation. No longer in use.
+*/
+
+/*
 import (
 	"bytes"
 	"fmt"

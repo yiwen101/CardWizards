@@ -5,10 +5,11 @@ import (
 
 	"github.com/cloudwego/thriftgo/pkg/test"
 	"github.com/yiwen101/CardWizards/pkg/store"
+	"github.com/yiwen101/CardWizards/pkg/utils"
 )
 
 func TestCallerClientsUpdatesMethods(t *testing.T) {
-	store.InfoStore.Load("", "../../testing/idl", "")
+	store.InfoStore.Load("", utils.PkgToIDL, "")
 	client, ok := GetClient("arithmetic")
 	// debug mode peek: client should be with weighted round robin lb
 	test.Assert(t, ok)

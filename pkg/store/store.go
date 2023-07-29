@@ -11,7 +11,7 @@ import (
 
 //todo: improve performance by using multiple mutexes and concurrent map; not the bottleneck for now
 
-type Admin interface {
+type store interface {
 	GetAllServiceNames() (map[string]*ServiceMeta, error)
 	CheckProxyStatus() (bool, error)
 	TurnOnProxy() error  //proxyGate
@@ -53,6 +53,7 @@ func init() {
 		lbStateListners:        []EventListener{},
 		ServicesMap:            map[string]*ServiceMeta{},
 		ProxyAddress:           "",
+		Password:               "",
 		IdlFolderRelativePath:  "../../IDL",
 	}
 }
@@ -106,7 +107,6 @@ type Store struct {
 	ServicesMap map[string]*ServiceMeta
 
 	ProxyAddress          string
-	StoreAddress          string
 	IdlFolderRelativePath string
 	Password              string
 }
@@ -114,6 +114,7 @@ type Store struct {
 type ServiceMeta struct {
 	ServiceName string
 	ClusterName string
+	IdlFileName string
 
 	Descriptor *descriptorKeeper
 	LbType     string
@@ -131,6 +132,16 @@ type ApiMeta struct {
 	IsOn   bool
 }
 
+type EventListener interface {
+	OnStatechanged(data ...interface{}) error
+}
+
+func notifyStatechange(listeners []EventListener, data ...interface{}) {
+	for _, listener := range listeners {
+		listener.OnStatechanged(data...)
+	}
+
+}
 func (s *Store) RegisterProxyStateListener(listener EventListener) {
 	s.proxyStateListeners = append(s.proxyStateListeners, listener)
 }
@@ -150,16 +161,7 @@ func (s *Store) RegisterLoadBalanceChoiceListener(listener EventListener) {
 	s.lbStateListners = append(s.lbStateListners, listener)
 }
 
-type EventListener interface {
-	OnStatechanged(data ...interface{}) error
-}
 
-func notifyStatechange(listeners []EventListener, data ...interface{}) {
-	for _, listener := range listeners {
-		listener.OnStatechanged(data...)
-	}
-
-}
 
 func (s *Store) GetAllServiceNames() (map[string]*ServiceMeta, error) {
 	s.mutex.RLock()
@@ -193,12 +195,6 @@ func (s *Store) GetProxyAddress() (string, error) {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 	return s.ProxyAddress, nil
-}
-
-func (s *Store) GetStoreAddress() (string, error) {
-	s.mutex.RLock()
-	defer s.mutex.RUnlock()
-	return s.StoreAddress, nil
 }
 
 func (s *Store) GetAPIs(serviceName string) (map[string]*ApiMeta, error) {
@@ -249,9 +245,9 @@ func (s *Store) AddService(idlFileName, clusterName string) (string, error) {
 		ServiceName: serviceName,
 		ClusterName: clusterName,
 		Descriptor:  dk,
-		//todo
-		LbType: "default",
-		APIs:   result,
+		IdlFileName: idlFileName,
+		LbType:      "default",
+		APIs:        result,
 	}
 	notifyStatechange(s.ServiceMapListeners, true, s.ServicesMap[serviceName])
 	return serviceName, nil
@@ -488,5 +484,5 @@ func (s *Store) GetIdlFileName(serviceName string) (string, error) {
 	if !ok {
 		return "", fmt.Errorf("service %s not found", serviceName)
 	}
-	return meta.Descriptor.GetFileName()
+	return meta.IdlFileName, nil
 }

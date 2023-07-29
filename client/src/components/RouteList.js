@@ -10,7 +10,7 @@ const ServiceFilter = [
   <TextInput source="methodName" label="Method Name" alwaysOn/>,
 ];
 export const RouteList = () => (
-  <List  exporter={false}  filters = {ServiceFilter} >
+  <List   filters = {ServiceFilter} >
         <Datagrid >
             <TextField source="serviceName" />
             <TextField source="methodName" />

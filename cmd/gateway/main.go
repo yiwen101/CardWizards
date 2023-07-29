@@ -17,7 +17,7 @@ import (
 var (
 	addr          = flag.String("addr", "127.0.0.1:8080", "Addr: http request entrypoint")
 	pathIDL       = flag.String("idl", "../../IDL", "Path: idl file path")
-	adminPassword = flag.String("addr-store-pwd", "", "addr Store Password")
+	adminPassword = flag.String("pwd", "", "addr Store Password")
 	//addrPPROF                     = flag.String("addr-pprof", "", "Addr: pprof addr")
 
 	//limitBytesCachingMB           = flag.Uint64("limit-caching", 64, "Limit(MB): MB for caching size")

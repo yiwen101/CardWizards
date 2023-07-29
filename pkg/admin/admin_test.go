@@ -15,17 +15,30 @@ import (
 	"github.com/yiwen101/CardWizards/pkg/proxy"
 	"github.com/yiwen101/CardWizards/pkg/router"
 	"github.com/yiwen101/CardWizards/pkg/store"
+	"github.com/yiwen101/CardWizards/pkg/utils"
 )
 
 var testRouter *route.Engine
+var admin *route.RouterGroup
+var defaultHeaders = []ut.Header{}
 
-// todo adjust according to the change in the frontend
-func TestAdmin(t *testing.T) {
-	store.InfoStore.Load("proxyAddress", "../../testing/idl", "")
+func init() {
+	store.InfoStore.Load("proxyAddress", utils.PkgToIDL, "password")
 	testRouter = route.NewEngine(config.NewOptions([]config.Option{}))
-	testRegisterAdmin(testRouter)
-	testRegisterProxy(testRouter)
+	registerAPIGateway(testRouter)
 
+	admin = testRouter.Group("/admin")
+	for _, f := range registerlist {
+		f(admin)
+	}
+	defaultHeaders = []ut.Header{
+		{Key: "Content-Type", Value: "application/json"},
+		{Key: "Password", Value: store.InfoStore.Password},
+	}
+}
+
+// turn on the kitex server and nacos server before run this test
+func TestAdmin(t *testing.T) {
 	bytes, code := call("GET", "/admin/service")
 	test.Assert(t, code == http.StatusOK)
 	var servs []serviceInfo
@@ -111,451 +124,41 @@ func TestAdmin(t *testing.T) {
 }
 
 func TestPassword(t *testing.T) {
-	store.InfoStore.Load("proxyAddress", "../../testing/idl", "password")
-	testRouter = route.NewEngine(config.NewOptions([]config.Option{}))
-	testRegisterAdmin(testRouter)
-	testRegisterProxy(testRouter)
-
-	w := ut.PerformRequest(
-		testRouter,
-		"GET",
-		"/admin/proxy",
-		&ut.Body{},
-		ut.Header{Key: "Content-Type", Value: "application/json"},
-	)
-	code := w.Result().StatusCode()
-	test.Assert(t, code != 200)
-
-	w = ut.PerformRequest(
-		testRouter,
-		"GET",
-		"/admin/proxy",
-		&ut.Body{},
-		ut.Header{Key: "Content-Type", Value: "application/json"},
-		ut.Header{Key: "Password", Value: "password"},
-	)
-	code = w.Result().StatusCode()
+	password := store.InfoStore.Password
+	test.Assert(t, password != "")
+	admin.Use(func(ctx context.Context, c *app.RequestContext) {
+		if string(c.GetHeader("Password")) != password {
+			c.AbortWithMsg("wrong password", http.StatusBadRequest)
+		}
+	})
+	_, code := call("GET", "/admin/proxy")
 	test.Assert(t, code == 200)
 
-}
-
-// make sure this function's body is indentical to the function Register
-func testRegisterAdmin(r *route.Engine) {
-	admin := r.Group("/admin")
-	/*
-		admin.Use(cors.New(cors.Config{
-			AllowAllOrigins:  true,
-			//AllowOrigins:     []string{"http://localhost:3000"},                   // Update this to match your frontend URL
-			AllowMethods:     []string{"GET", "POST", "PUT", "DELETE"},            // Add the allowed HTTP methods
-			AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"}, // Add the allowed request headers
-			ExposeHeaders:    []string{"Content-Length"},                          // Expose additional response headers if needed
-			AllowCredentials: true,                                                // Allow credentials (e.g., cookies, authorization headers)
-			MaxAge:           12 * time.Hour,                                      // Set the preflight request cache duration
-		}))
-	*/
-	password := store.InfoStore.Password
-	if password != "" {
-		admin.Use(func(ctx context.Context, c *app.RequestContext) {
-			if string(c.GetHeader("Password")) != password {
-				c.AbortWithMsg("wrong password", http.StatusBadRequest)
-			}
-		})
-	}
-
-	admin.GET("/service",
-		func(ctx context.Context, c *app.RequestContext) {
-			services, err := store.InfoStore.GetAllServiceNames()
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, err.Error())
-				return
-			}
-			result := []serviceInfo{}
-
-			for _, meta := range services {
-				result = append(result, translateService(meta))
-			}
-			c.JSON(http.StatusOK, result)
-		})
-	admin.GET("/service/:serviceName",
-		func(ctx context.Context, c *app.RequestContext) {
-			s, err := store.InfoStore.GetServiceInfo(c.Param("serviceName"))
-			if err != nil {
-				c.JSON(http.StatusNotFound, err.Error())
-				return
-			}
-			c.JSON(http.StatusOK, translateService(s))
-		})
-	admin.POST("/service",
-		func(ctx context.Context, c *app.RequestContext) {
-			bytes, err := c.Body()
-			if err != nil {
-				c.JSON(http.StatusBadRequest, err.Error())
-				return
-			}
-			var b serviceInfo
-			err = sonic.Unmarshal(bytes, &b)
-			if err != nil {
-				c.JSON(http.StatusBadRequest, err.Error())
-				return
-			}
-			serviceName, err := store.InfoStore.AddService(b.IdlFileName, b.ClusterName)
-			if err != nil {
-				c.JSON(http.StatusBadRequest, err.Error())
-				return
-			}
-			serviceMeta, err := store.InfoStore.GetServiceInfo(serviceName)
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, err.Error())
-				return
-			}
-
-			newLb, ok := parseLB(b.LoadBalanceOption)
-			if !ok {
-				c.JSON(http.StatusBadRequest, "invalid load balance option")
-				return
-			}
-			if newLb != serviceMeta.LbType {
-				err = store.InfoStore.SetLbType(serviceName, newLb)
-				if err != nil {
-					c.JSON(http.StatusBadRequest, err.Error())
-					return
-				}
-			}
-			if b.IsSleeping {
-				err = store.InfoStore.TurnOffService(serviceName)
-				if err != nil {
-					c.JSON(http.StatusBadRequest, err.Error())
-					return
-				}
-			}
-			serviceMeta, _ = store.InfoStore.GetServiceInfo(serviceName)
-
-			c.JSON(http.StatusOK, translateService(serviceMeta))
-		})
-	admin.PUT("/service/:serviceName",
-		func(ctx context.Context, c *app.RequestContext) {
-
-			bytes, err := c.Body()
-			if err != nil {
-				c.JSON(http.StatusBadRequest, err.Error())
-				return
-			}
-			var b serviceInfo
-			err = sonic.Unmarshal(bytes, &b)
-			if err != nil {
-				c.JSON(http.StatusBadRequest, err.Error())
-				return
-			}
-			if b.ServiceName != c.Param("serviceName") {
-				c.JSON(http.StatusBadRequest, "service name does not match")
-				return
-			}
-			serviceMeta, err := store.InfoStore.GetServiceInfo(c.Param("serviceName"))
-			if err != nil {
-				c.JSON(http.StatusBadRequest, "invalid service name")
-				return
-			}
-
-			newLb, ok := parseLB(b.LoadBalanceOption)
-			if !ok {
-				c.JSON(http.StatusBadRequest, "invalid load balance option")
-				return
-			}
-			ServiceName := b.ServiceName
-			if b.ClusterName != serviceMeta.ClusterName || b.ReloadIDL {
-				ServiceName, err = store.InfoStore.UpdateService(b.ServiceName, b.IdlFileName, b.ClusterName)
-				if err != nil {
-					c.JSON(http.StatusBadRequest, err.Error())
-					return
-				}
-				serviceMeta, err = store.InfoStore.GetServiceInfo(ServiceName)
-				if err != nil {
-					c.JSON(http.StatusInternalServerError, err.Error())
-					return
-				}
-			}
-
-			if newLb != serviceMeta.LbType {
-				err = store.InfoStore.SetLbType(ServiceName, newLb)
-				if err != nil {
-					c.JSON(http.StatusInternalServerError, err.Error())
-					return
-				}
-			}
-
-			if b.IsSleeping != isSleeping(serviceMeta) {
-				if !b.IsSleeping {
-					err = store.InfoStore.TurnOnService(c.Param("serviceName"))
-				} else {
-					err = store.InfoStore.TurnOffService(c.Param("serviceName"))
-				}
-			}
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, err.Error())
-				return
-			}
-
-			serviceMeta, err = store.InfoStore.GetServiceInfo(ServiceName)
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, err.Error())
-				return
-			}
-
-			c.JSON(http.StatusOK, translateService(serviceMeta))
-
-		})
-	admin.DELETE("/service/:serviceName",
-		func(ctx context.Context, c *app.RequestContext) {
-			err := store.InfoStore.RemoveService(c.Param("serviceName"))
-			if err != nil {
-				c.JSON(http.StatusNotFound, err.Error())
-				return
-			}
-			c.JSON(http.StatusOK, "Service is removed")
-		})
-
-	admin.GET("/api/:serviceName/:methodName",
-		func(ctx context.Context, c *app.RequestContext) {
-			s, err := store.InfoStore.CheckAPIStatus(c.Param("serviceName"), c.Param("methodName"))
-			if err != nil {
-				c.JSON(http.StatusNotFound, err.Error())
-				return
-			}
-
-			c.JSON(http.StatusOK, translateAPI(s))
-		})
-
-	admin.GET("/api/:serviceName",
-		func(ctx context.Context, c *app.RequestContext) {
-			s, err := store.InfoStore.GetServiceInfo(c.Param("serviceName"))
-			if err != nil {
-				c.JSON(http.StatusNotFound, err.Error())
-				return
-			}
-			apis := []apiInfo{}
-			for _, api := range s.APIs {
-				apis = append(apis, translateAPI(api))
-			}
-
-			c.JSON(http.StatusOK, apis)
-		})
-	admin.GET("/api",
-		func(ctx context.Context, c *app.RequestContext) {
-			services, err := store.InfoStore.GetAllServiceNames()
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, err.Error())
-				return
-			}
-			apis := []apiInfo{}
-			for _, service := range services {
-				for _, api := range service.APIs {
-					apis = append(apis, translateAPI(api))
-				}
-			}
-			c.JSON(http.StatusOK, apis)
-		})
-
-	admin.PUT("/api/:serviceName/:methodName",
-		func(ctx context.Context, c *app.RequestContext) {
-			apiMeta, err := store.InfoStore.CheckAPIStatus(c.Param("serviceName"), c.Param("methodName"))
-			if err != nil {
-				c.JSON(http.StatusNotFound, err.Error())
-				return
-			}
-
-			bytes, err := c.Body()
-			if err != nil {
-				c.JSON(http.StatusBadRequest, err.Error())
-				return
-			}
-			var b apiInfo
-			err = sonic.Unmarshal(bytes, &b)
-			if err != nil {
-				c.JSON(http.StatusBadRequest, err.Error())
-				return
-			}
-			if b.ServiceName != c.Param("serviceName") || b.MethodName != c.Param("methodName") {
-				c.JSON(http.StatusBadRequest, "service name or method name does not match")
-				return
-			}
-
-			if !b.IsSleeping != apiMeta.IsOn {
-				if !b.IsSleeping {
-					err = store.InfoStore.TurnOnAPI(c.Param("serviceName"), c.Param("methodName"))
-				} else {
-					err = store.InfoStore.TurnOffAPI(c.Param("serviceName"), c.Param("methodName"))
-				}
-			}
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, err.Error())
-				return
-			}
-			if b.ValidationStatus != apiMeta.ValidationOn {
-				if b.ValidationStatus {
-					err = store.InfoStore.TurnOnValidation(c.Param("serviceName"), c.Param("methodName"))
-				} else {
-					err = store.InfoStore.TurnOffValidation(c.Param("serviceName"), c.Param("methodName"))
-				}
-			}
-
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, err.Error())
-				return
-			}
-			newApi, err := store.InfoStore.CheckAPIStatus(c.Param("serviceName"), c.Param("methodName"))
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, err.Error())
-				return
-			}
-
-			c.JSON(http.StatusOK, translateAPI(newApi))
-		})
-
-	admin.GET("/proxy",
-		func(ctx context.Context, c *app.RequestContext) {
-			s, err := store.InfoStore.CheckProxyStatus()
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, err.Error())
-				return
-			}
-			c.JSON(http.StatusOK, s)
-		})
-	admin.PUT("/proxy",
-		func(ctx context.Context, c *app.RequestContext) {
-			bytes, err := c.Body()
-			if err != nil {
-				c.JSON(http.StatusBadRequest, err.Error())
-				return
-			}
-			var b bool
-			err = sonic.Unmarshal(bytes, &b)
-			if err != nil {
-				c.JSON(http.StatusBadRequest, err.Error())
-				return
-			}
-			if b {
-				err = store.InfoStore.TurnOnProxy()
-			} else {
-				err = store.InfoStore.TurnOffProxy()
-			}
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, err.Error())
-				return
-			}
-			c.JSON(http.StatusOK, "Proxy status updated")
-		})
-
-	admin.GET("/route",
-		func(ctx context.Context, c *app.RequestContext) {
-			services, err := store.InfoStore.GetAllServiceNames()
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, err.Error())
-				return
-			}
-			routes := []routeInfo{}
-			for _, service := range services {
-				routes = append(routes, buildRoutesfromService(service)...)
-			}
-			c.JSON(http.StatusOK, routes)
-		})
-	admin.GET("/route/:httpMethod/*url",
-		func(ctx context.Context, c *app.RequestContext) {
-			method, url := c.Param("httpMethod"), "/"+c.Param("url")
-
-			r, ok := router.GetRoute(method, url)
-			if !ok {
-				c.JSON(http.StatusNotFound, "route not found")
-				return
-			}
-			c.JSON(http.StatusOK, routeInfo{method + url, r.ServiceName, r.MethodName, method, url})
-		},
-	)
-	admin.POST("/route",
-		func(ctx context.Context, c *app.RequestContext) {
-			bytes, err := c.Body()
-			if err != nil {
-				c.JSON(http.StatusBadRequest, err.Error())
-				return
-			}
-			var b routeInfo
-			err = sonic.Unmarshal(bytes, &b)
-			if err != nil {
-				c.JSON(http.StatusBadRequest, err.Error())
-				return
-			}
-
-			err = store.InfoStore.AddRoute(b.ServiceName, b.MethodName, b.HttpMethod, b.Url)
-			if err != nil {
-				c.JSON(http.StatusBadRequest, err.Error())
-				return
-			}
-			b.Id = b.HttpMethod + b.Url
-			c.JSON(http.StatusOK, b)
-		})
-	admin.PUT("/route/:httpMethod/*url",
-		func(ctx context.Context, c *app.RequestContext) {
-			method, url := c.Param("httpMethod"), "/"+c.Param("url")
-
-			r, ok := router.GetRoute(method, url)
-			if !ok {
-				c.JSON(http.StatusNotFound, "route not found")
-				return
-			}
-			bytes, err := c.Body()
-			if err != nil {
-				c.JSON(http.StatusBadRequest, err.Error())
-				return
-			}
-			var b routeInfo
-			err = sonic.Unmarshal(bytes, &b)
-			if err != nil {
-				c.JSON(http.StatusBadRequest, err.Error())
-				return
-			}
-			if b.MethodName != r.MethodName || b.ServiceName != r.ServiceName {
-				c.JSON(http.StatusBadRequest, "route info does not match")
-				return
-			}
-			err = store.InfoStore.ModifyRoute(b.ServiceName, b.MethodName, method, url, b.HttpMethod, b.Url)
-			if err != nil {
-				c.JSON(http.StatusBadRequest, err.Error())
-				return
-			}
-			c.JSON(http.StatusOK, b)
-		})
-	admin.DELETE("/route/:httpMethod/*url",
-		func(ctx context.Context, c *app.RequestContext) {
-			method, url := c.Param("httpMethod"), "/"+c.Param("url")
-			r, ok := router.GetRoute(method, url)
-			if !ok {
-				c.JSON(http.StatusNotFound, "route not found")
-				return
-			}
-
-			err := store.InfoStore.RemoveRoute(r.ServiceName, r.MethodName, method, url)
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, err.Error())
-				return
-			}
-			c.JSON(http.StatusOK, "Route is removed")
-		})
-}
-
-func testRegisterProxy(r *route.Engine) {
-	r.GET("/*:test",
-		func(ctx context.Context, c *app.RequestContext) {
-			proxy.Proxy.Serve(ctx, c, nil)
-		})
+	_, code = callWithoutPassword("PUT", "/admin/proxy")
+	test.Assert(t, code != 200)
 }
 
 func call(method string, url string) ([]byte, int) {
+	w := ut.PerformRequest(testRouter, method, url, &ut.Body{}, defaultHeaders...)
+	return w.Result().Body(), w.Result().StatusCode()
+}
+
+func callWithBody(method string, url string, body interface{}, headers ...ut.Header) ([]byte, int) {
+	bs, _ := sonic.Marshal(body)
+	b := bytes.NewBuffer(bs)
+	headers = append(headers, defaultHeaders...)
+	w := ut.PerformRequest(testRouter, method, url, &ut.Body{Body: b, Len: b.Len()}, headers...)
+	return w.Result().Body(), w.Result().StatusCode()
+}
+
+func callWithoutPassword(method string, url string) ([]byte, int) {
 	w := ut.PerformRequest(testRouter, method, url, &ut.Body{}, ut.Header{Key: "Content-Type", Value: "application/json"})
 	return w.Result().Body(), w.Result().StatusCode()
 }
 
-func callWithBody(method string, url string, body interface{}) ([]byte, int) {
-	bs, _ := sonic.Marshal(body)
-	b := bytes.NewBuffer(bs)
-	w := ut.PerformRequest(testRouter, method, url, &ut.Body{Body: b, Len: b.Len()}, ut.Header{Key: "Content-Type", Value: "application/json"})
-	return w.Result().Body(), w.Result().StatusCode()
+func registerAPIGateway(r *route.Engine) {
+	r.GET("/*:test",
+		func(ctx context.Context, c *app.RequestContext) {
+			proxy.Proxy.Serve(ctx, c, nil)
+		})
 }

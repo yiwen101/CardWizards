@@ -1,7 +1,8 @@
 package proxy
 
-// service is responsible for providing the api gateway service
-
+/*
+ This package is responsible for providing the api gateway service
+*/
 import (
 	"context"
 	"fmt"
@@ -12,16 +13,19 @@ import (
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/app/server"
 	"github.com/yiwen101/CardWizards/pkg/caller"
-	"github.com/yiwen101/CardWizards/pkg/proxy/validator"
 	"github.com/yiwen101/CardWizards/pkg/router"
 	"github.com/yiwen101/CardWizards/pkg/store"
+	"github.com/yiwen101/CardWizards/pkg/validator"
 )
 
 func Register(r *server.Hertz) {
-
-	r.Any("/*path", func(ctx context.Context, c *app.RequestContext) { Proxy.Serve(ctx, c, nil) })
+	r.GET("/*path",
+		func(ctx context.Context, c *app.RequestContext) {
+			Proxy.Serve(ctx, c, nil)
+		})
 }
 
+// similar to a list of middleware
 var Proxy handlerChain
 
 func init() {
@@ -40,6 +44,12 @@ type handlerChain interface {
 	SetNext(f handlerChain)
 }
 
+/*
+to avoid repeating myself, provide a baseHandler struct to easily facilitate the creation of new handlerChain
+with a func(ctx context.Context, c *app.RequestContext, route *router.RouteData) (*router.RouteData, bool) . If
+The bool returned is false, the rest of the chain will not be executed.
+Each handlerChain node should decide whether to abort the ctx with some code or message themselves.
+*/
 type baseHandler struct {
 	hander func(ctx context.Context, c *app.RequestContext, route *router.RouteData) (*router.RouteData, bool)
 	next   handlerChain
@@ -88,7 +98,7 @@ func contentTypeHandler(ctx context.Context, c *app.RequestContext, route *route
 	str := string(bytes)
 
 	if !strings.Contains(str, "application/json") {
-		c.String(http.StatusBadRequest, "Invalid Content-Type: "+str)
+		c.AbortWithStatusJSON(http.StatusBadRequest, "Invalid Content-Type: "+str)
 		return nil, false
 	}
 	return route, true
@@ -99,7 +109,7 @@ func routeHandler(ctx context.Context, c *app.RequestContext, route *router.Rout
 	method := string(c.Method())
 	r, ok := router.GetRoute(method, path)
 	if !ok {
-		c.String(http.StatusNotFound, "404 page not found")
+		c.AbortWithStatusJSON(http.StatusNotFound, "404 page not found")
 		return nil, false
 	}
 	return r, true
@@ -116,7 +126,7 @@ func apiGateHandler(ctx context.Context, c *app.RequestContext, route *router.Ro
 		return nil, false
 	}
 	if !meta.IsOn {
-		c.String(http.StatusNotFound, "404 page not found")
+		c.AbortWithStatusJSON(http.StatusNotFound, "404 page not found")
 		return nil, false
 	}
 	return route, meta.IsOn
@@ -125,13 +135,13 @@ func apiGateHandler(ctx context.Context, c *app.RequestContext, route *router.Ro
 func validationGateHandler(ctx context.Context, c *app.RequestContext, route *router.RouteData) (*router.RouteData, bool) {
 	meta, err := store.InfoStore.CheckAPIStatus(route.ServiceName, route.MethodName)
 	if err != nil {
-		c.String(http.StatusInternalServerError, err.Error())
+		c.AbortWithStatusJSON(http.StatusInternalServerError, err.Error())
 		return nil, false
 	}
 	if meta.ValidationOn {
 		good, errInfo := validator.Validate(c, route.ServiceName, route.MethodName)
 		if !good {
-			c.String(http.StatusBadRequest, "Invalid body: "+errInfo.Error())
+			c.AbortWithStatusJSON(http.StatusBadRequest, "Invalid body: "+errInfo.Error())
 			return nil, false
 		}
 	}
@@ -139,31 +149,32 @@ func validationGateHandler(ctx context.Context, c *app.RequestContext, route *ro
 	return route, true
 }
 
-// posible extension: enabling managing call options per api level; should add to filter
 func mainHandler(ctx context.Context, c *app.RequestContext, route *router.RouteData) (*router.RouteData, bool) {
 	client, ok := caller.GetClient(route.ServiceName)
 	if !ok {
-		c.String(http.StatusInternalServerError, "caller for the service not found")
+		c.AbortWithStatusJSON(http.StatusInternalServerError, "caller for the service not found")
 		return nil, false
 	}
 
 	jsonbytes, err := c.Body()
 	if err != nil {
-		c.String(http.StatusInternalServerError, "Internal Server Error in marshalling the json body: "+err.Error())
+		c.AbortWithStatusJSON(http.StatusInternalServerError, "Internal Server Error in marshalling the json body: "+err.Error())
 		return nil, false
 	}
 
 	genericResponse, err := client.GenericCall(ctx, route.MethodName, string(jsonbytes))
 	if err != nil {
-		c.String(http.StatusBadGateway, "GenericCall failed, error: "+err.Error())
-		log.Println(fmt.Sprintf("GenericCall failed for %s, error: %s", route.ServiceName, err.Error()))
+		c.AbortWithStatusJSON(http.StatusBadGateway, "GenericCall failed, error: "+err.Error())
+		go log.Println(fmt.Sprintf("GenericCall failed for %s, error: %s", route.ServiceName, err.Error()))
 		return nil, false
 	}
 	str, ok := genericResponse.(string)
 	if !ok {
-		c.String(http.StatusInternalServerError, "Internal Server Error in type assertion")
+		c.AbortWithStatusJSON(http.StatusInternalServerError, "Internal Server Error in type assertion")
 		return nil, false
 	}
+
+	// str is already Json string; no need to marshal
 	c.String(200, str)
 	c.SetContentType("application/json")
 
