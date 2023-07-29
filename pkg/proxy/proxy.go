@@ -19,7 +19,7 @@ import (
 )
 
 func Register(r *server.Hertz) {
-	r.GET("/*path",
+	r.Any("proxy/*path",
 		func(ctx context.Context, c *app.RequestContext) {
 			Proxy.Serve(ctx, c, nil)
 		})
@@ -105,7 +105,7 @@ func contentTypeHandler(ctx context.Context, c *app.RequestContext, route *route
 }
 
 func routeHandler(ctx context.Context, c *app.RequestContext, route *router.RouteData) (*router.RouteData, bool) {
-	path := string(c.URI().Path())
+	path := "/" + string(c.Param("path"))
 	method := string(c.Method())
 	r, ok := router.GetRoute(method, path)
 	if !ok {

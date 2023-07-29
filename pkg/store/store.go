@@ -54,7 +54,7 @@ func init() {
 		ServicesMap:            map[string]*ServiceMeta{},
 		ProxyAddress:           "",
 		Password:               "",
-		IdlFolderRelativePath:  "../../IDL",
+		IdlFolderRelativePath:  "IDL",
 	}
 }
 
@@ -160,8 +160,6 @@ func (s *Store) RegisterApiRouteListener(listener EventListener) {
 func (s *Store) RegisterLoadBalanceChoiceListener(listener EventListener) {
 	s.lbStateListners = append(s.lbStateListners, listener)
 }
-
-
 
 func (s *Store) GetAllServiceNames() (map[string]*ServiceMeta, error) {
 	s.mutex.RLock()

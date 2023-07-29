@@ -124,7 +124,7 @@ func main() {
 		panic(err)
 	}
 
-	p, err := generic.NewThriftFileProvider("arithmetic.thrift", "../../../idl")
+	p, err := generic.NewThriftFileProvider("arithmetic.thrift", "../../../IDL")
 	if err != nil {
 		panic(err)
 	}
