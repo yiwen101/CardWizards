@@ -1,3 +1,11 @@
+# Table of Contents
+
+- [User Documentation](#user-documentation)
+- [Design Documentation](#design-documentation)
+- [Requirement Documentation](#requirement-documentation)
+- [Software Engineering Highlights](#software-engineering-highlights)
+
+
 # User Documentation
 
 ## Prerequisites
@@ -31,7 +39,7 @@ Will get an error-free response
    “serve -s build”
    ```
    You should be able to see something like this in the terminal:
-   ![image](../images/image1.png)
+   ![image](./images/image1.png)
 9.  copy the address and port number (in this case, it is http://localhost:3000) and visit it with your browser. Have fun exploring its functionalities!
 
 10: Additional note: when you make an edit in the web UI, a “withdraw” button will be available for a few seconds in case you want to undo the last modification. To support this, UI will actually wait for a few seconds before sending the modification request to the server. So you may see some delay between making the modification on the web UI and witnessing a real change to the API Gateway server’s behavior.
@@ -39,18 +47,18 @@ Will get an error-free response
 ## Key terms and functionalities:
 ### ServiceName and MethodName
 The “serviceName” and “methodName” are parsed out of the name inside the Thrift file. For example, the “serviceName” and “methodName” for the file below are NoteServie and CreateNote respectively.
-![image](../images/image2.png)
+![image](images/image2.png)
 
 We did not choose to set the “serviceName” by the thrift file name or the “namespace” inside the file. This is because we hope to make our “serviceName” align to the “Name” attribute of the “serviceDescriptor” parsed from the IDL file. 
 ### ClusterName
 The cluster name is used to find the RPC server cluster in the Nacos server. It should align to the name the upstream RPC server uses.
 
 For example,this is a piece of code from an upstream RPC server. The cluster name for it should be “arithmetic”
-![image](../images/image3.png)
+![image](images/image3.png)
 
 The Default cluster name is the name of the Thrift file without the “.thrift” extensions. 
 For example, this piece of code is from the  “note.thrift” file, then the cluster name for the “BizService” service is “note” by default.
-![image](../images/image4.png)
+![image](images/image4.png)
 
 We design this default value mechanism with a reason. IDL files are written by the teams responsible for that service as a means of communication of the service's information. So the name of the file is likely to be the name used by the RPC server of that service. 
 
@@ -74,7 +82,7 @@ We design this field in the Service as a “syntax sugar” for turning on/off a
 When “validationOn” is true, a validator will recursively validate the incoming JSON body for all requests against the descriptor parsed from the IDL file of that method. If the validation is not successful, it will not forward the request to the main handler and return an error message indicating the issue that leads to failure of validation. Error message highlighting the type mismatch for the argument passed in.
 
 We design this as the JsonThrift generic call does not handle JSON body validation properly by default. For example, it will assume zero value for missing non-optional fields and assume strange values when a field’s type is wrong. The tables below highlight the difference in the gateway’s behaviors with and without validator:
-![image](../images/image5.png)
+![image](images/image5.png)
 
 The default value for this field is false due to performance consideration.
 
@@ -84,7 +92,7 @@ For all services in the IDL file, it will automatically register each method of 
 You can easily add, delete and modify routes via our web UI.
 
 ### Proxy
-![image](../images/image6.png)
+![image](images/image6.png)
 Proxy is a synonym for the API Gateway service in our project. You need to use {HTTP method} {address}/proxy/${routePath} to access the upstream resources. For example, “GET 127.0.0.1:8080/proxy/arithmetic/Add”.
 
  Proxy can be taken as a chain of handlers where each node calls the next in the chain only when the request passes its test. Router and MainHandler are the most important sub-components for the proxy component.
@@ -135,14 +143,16 @@ For the web user interface, you need to update the .env file inside the “User 
 
 You need to reset the value of REACT_APP_Gateway_Address to your customized server address for the GUI to work.
 
+## Link to other resources
 
+[]
 
 ***
 ***
 
 # Design documentation
 ## Overall Architecture:
-![image](../images/image7.png)
+![image](images/image7.png)
 There are three components in the API Gateway: Admin, Proxy and Store.
 
 The Proxy component contains the logic for API Gateway. The Store component is responsible for controlling the behavior of the Proxy, and the Admin component provides RESTful APIs for performing CRUD to the Store component, and hence enables runtime modification of the Proxy’s behavior. UI is a sub-project that offers a web graphical user interface to the user. 
@@ -151,7 +161,7 @@ For now, our API Gateway only accepts Thrift IDL files, utilizes Nacos service r
 
 ## Component Details:
 ### Proxy Component
-![image](../images/image8.png)
+![image](images/image8.png)
 
 The Proxy component is responsible for the main logic of the API Gateway. It can be taken as a chain of handlers where each node calls the next in the chain only when the request passes its test. Router and MainHandler are the most important sub-components for the proxy component.
 
@@ -165,7 +175,7 @@ Most sub-components are controlled by the Store component.
 
 ### Store Component
 Store is responsible for controlling the Proxy component. The following gives the APIs of the Store component.
-![image](../images/image9.png)
+![image](images/image9.png)
 
 “ //xxx ” after each line means “xxx” package registers a listener to the “UpdateEvent” occurring at that field. This is also the mechanism that the Store component uses to control the behavior of the Proxy component.
 
@@ -191,11 +201,11 @@ Admin component is responsible for offering RESTful APIs to the external to perf
 |PUT|/admin/api/:id|apiInfo|apiInfo
 
 And the mentioned data type serviceInfo, RouteInfo, apiInfo are :
-![image](../images/image10.png)
+![image](images/image10.png)
 
 ## Working Flow
 
-![image](../images/image11.png)
+![image](images/image11.png)
 At run time, when a user sends a HTTP request to the API Gateway, the gateway will first check whether the content type is valid. If it is not valid, it will make an error response, otherwise, it will call the router
 
 Router will find the matching api for the incoming request, It will make an error response if the route is not valid, and call the BodyValidator with route information otherwise. 
@@ -205,86 +215,6 @@ By default the validator is off and directly calls the main handler. But if it i
 
 The generic client will ask for a list of hosts from Nacos service registry and discovery center, choose one server from the list according to its load balancing strategy, make a generic call to the server, and finally forward the response back to the user.
 
-
-***
-***
-
-# Software Engineering Highlights
-## Software Engineering Principles
-### Open Close Principle
-The Open-Closed Principle requires that classes should be open for extension and closed to modification. This means that we should be able to add new functionality without touching the existing code for the class. 
-
-Take the demolished “Service” package for example, it used to violates the open close principle like this:(the client was in lexical scope for efficiency purposes). 
-![image](../images/image12.png)
-
-
-This violates the open close principle. There is no room for adding new functionality without editing the inner of the handler. Imagine using the “handlerManager'' to generate the handlers for “PUT /admin/service” in this way and hard coding all the pkg that need to react to the new PUT request, and all the logic in identifying what to perform with each field updation result  and whether the request is valid and so on. What a nightmare.
-
-The “store” package fulfills the open close principle with the event listener pattern.
-
-If a new package needs to perform some actions when a particular field is modified, the package just needs to import the Register function of that field from the Store package, pass in a function capturing the actions to be taken as argument to it, and the Store package will do the rest. And the call to all the registered handlers will only be made when there is a successful update. Then, the admin package’s handler can simply call the methods to modify the store without the needs to concern all the updating logics, and a new package can be updated as needed without the need to change the code of the Admin or Store package, just pass a EventHander to the store’s registry method will suffice.
-![image](../images/image13.png) 
-
-Needless to say, this principle has significantly improved the extensibility of the code.
-
-### Single Duty Principle:
-The Single Responsibility Principle means a class should have one, and only one, reason to change. 
-In our code in milestone 2, we did not fulfill this principle well as we group functionality to where it appears to come handy. For example, our client manager load clients by parsing the thrift files in the IDL folders when the server initialize.The issue is that the client manager does not only need to manage the map of services to clients, but also needs to care about the logic of building a descriptor from IDL files, which becomes troublesome when we wish to extend beyond just a thrift file. It also needs to care about initializing all the clients before the Hertz server runs, which brings in issues like what is the relative path to the thrift folders and so on. We also almost added handle call functionality to the client manager, as it appears to make sense. Well, clients are here to make calls to the upstream, so it appears to be the right place to add that functionality. This can not be more wrong.
-We bumped into many troubles when we attempted to add the “runtime update” functionality to our API gateway due to the mess brought about by this “put function at where it is most handy” practice. A failing remedy strategy is to make each “manager” as “powerful” and close to the end points as possible and dump functionalities in it. Yet we only find ourselves in greater chaos when we wish to add new features. 
-
-By the time of writing, we have applied the Single Duty Principle to refractor our code for the API Gateway. We demolished the “client” package into “caller” package which has only one duty: keep clients up to date with “Store”. The only method it exports outside is “GetClient”, and it no longer concerns the handle of request, nor does it parsing the IDL file itself, or need to explicitly concern with initializing all the clients. Its single duty is to maintain consistent client maps with what is stored in the “Store”. The “caller” package has almost become a runtime plugin to the “Store” package
-
-We have also carefully designed all the components in the API Gateway to fulfill the single duty principle, and are awarded with a clarity of mind.
-
-### Dependency Inversion Principle
-The Dependency Inversion principle states that our classes should depend upon interfaces or abstract classes instead of concrete classes and functions.
-
-The mainHandler in the proxy demonstrates the benefit of the dependency inversion principle. The generciclient.Client class (or struct) offered by Hertz does not support pointer receiver, which means that if our caller returns generciclient.Client, golang will costly create a copy of the whole struct and return the copied struct. A million calls to the GetClient method means copying the struct a million times which is unacceptable. 
-
-But fortunately the mainHandler does not depend on the “genericclient.Client” class  but (explicitly)  an interface implementing “GenericCall”. Therefore I could make a wrapper class myClient that supports a pointer receiver to solve the issue. There will be only one copy of the generciclient.Client struct per client in the main memory no matter the number of calls to the “GetClient '' method (which returns pointer pointing to a struct with the copied struct as a field)
-![image](../images/image14.png) 
-
-While options like keeping a single client in the lexical scope of the returned handler (which we did in milestone 2) or include the call method in the caller package (which we considered when trying to support runtime modification of the handler) could also solve this issue, but they are rejected as they contradicts to the open closure principle and single duty principle respectively.
-
-### Do not Repeat yourself Principle
-When we feel like copying and pasting code, we refactor the code writing a reusable  function to avoid repeating ourselves. For example in the admin_test file, we group the code of making a call into the callWithBody function. It turns out this does not only reduce the amount of code, but also significantly boost the clarity of mind during debugging.
-![image](../images/image15.png) 
-![image](../images/image16.png) 
-## Testing:
-### Unit Testing:
-Every package has its own unit testing. We aim at full coverage.
-Eg: this is part of the test for the “ValidateBody” method in the Validator submodule
-![image](../images/image17.png) 
-
-### Integration Testing:
-With the help of the “github.com/cloudwego/hertz/pkg/common/ut" package, we can directly interact with the “Engine” component in a Hertz server and write integration tests to test the behavior of the server upon receiving a HTTP request.
-
-We provide the code for a Kitex RPC server implementing the “arithmetic.thrift”  in the “testing” folder. The RPC server needs to be on during the test. It will respond to the RPC calls made by the Hertz Engine during the test.
-![image](../images/image18.png) 
-We also did some simple integration test via manually trying HTTP requests via Curl
-
-### Load Testing
-
-We did load tests via Jmeter. In the load test, we stimulate 1000 clients that incessantly sending requests for one minute (with a total of 143,996 requests)
-![image](../images/image19.png) 
-
-The error leads to failure is “middlewares.go:130: [Warn] KITEX: auto retry retryable error, retry=1 error=remote or network error: get connection error: dial tcp 192.168.199.77:8385: i/o timeout”
-## Other practices:
-### Planning:
-During the period of milestone three, we adopt multiple agile development techniques in our development.They are the use of user story and task cards in place of traditional requirement documentation, test-driven development process, active refactoring and incremental development based on scenarios.
-
-When adding a new feature, we first identify a scenario in mind, then describe it,  add in details and finally craft out a set of measurable test cases. This does not only help us to be more goal oriented by having a clean end in mind, but also enables a better understanding of the requirement during the process of generating the test case.
-### Documentation:
-Refer to “User Cases and Features”, “User Documentation” and “Design Documentation”. We also have comments in the code where helpful.
-
-### Error Handling:
-We carefully differentiate errors between fatal errors and non-fatal errors to make sure that the server will only shut down when there is a fatal error.
-### Coding standard:
-https://github.com/uber-go/guide/blob/master/style.md (uber go style guide)
-### Restful API design:
-Web API design best practices - Azure Architecture Center | Microsoft Learn
-### Project layout:
-https://github.com/golang-standards/project-layout
 
 
 ***
@@ -454,3 +384,85 @@ Implement rate limiting to prevent abuse of the API Gateway.
 Add authentication and certificate validation mechanisms to the API Gateway.
 
 Implement support for json-protobuf generic call in our gateway by implementing the JSON to Protobuf codec
+
+
+***
+***
+
+# Software Engineering Highlights
+## Software Engineering Principles
+### Open Close Principle
+The Open-Closed Principle requires that classes should be open for extension and closed to modification. This means that we should be able to add new functionality without touching the existing code for the class. 
+
+Take the demolished “Service” package for example, it used to violates the open close principle like this:(the client was in lexical scope for efficiency purposes). 
+![image](images/image12.png)
+
+
+This violates the open close principle. There is no room for adding new functionality without editing the inner of the handler. Imagine using the “handlerManager'' to generate the handlers for “PUT /admin/service” in this way and hard coding all the pkg that need to react to the new PUT request, and all the logic in identifying what to perform with each field updation result  and whether the request is valid and so on. What a nightmare.
+
+The “store” package fulfills the open close principle with the event listener pattern.
+
+If a new package needs to perform some actions when a particular field is modified, the package just needs to import the Register function of that field from the Store package, pass in a function capturing the actions to be taken as argument to it, and the Store package will do the rest. And the call to all the registered handlers will only be made when there is a successful update. Then, the admin package’s handler can simply call the methods to modify the store without the needs to concern all the updating logics, and a new package can be updated as needed without the need to change the code of the Admin or Store package, just pass a EventHander to the store’s registry method will suffice.
+![image](images/image13.png) 
+
+Needless to say, this principle has significantly improved the extensibility of the code.
+
+### Single Duty Principle:
+The Single Responsibility Principle means a class should have one, and only one, reason to change. 
+In our code in milestone 2, we did not fulfill this principle well as we group functionality to where it appears to come handy. For example, our client manager load clients by parsing the thrift files in the IDL folders when the server initialize.The issue is that the client manager does not only need to manage the map of services to clients, but also needs to care about the logic of building a descriptor from IDL files, which becomes troublesome when we wish to extend beyond just a thrift file. It also needs to care about initializing all the clients before the Hertz server runs, which brings in issues like what is the relative path to the thrift folders and so on. We also almost added handle call functionality to the client manager, as it appears to make sense. Well, clients are here to make calls to the upstream, so it appears to be the right place to add that functionality. This can not be more wrong.
+We bumped into many troubles when we attempted to add the “runtime update” functionality to our API gateway due to the mess brought about by this “put function at where it is most handy” practice. A failing remedy strategy is to make each “manager” as “powerful” and close to the end points as possible and dump functionalities in it. Yet we only find ourselves in greater chaos when we wish to add new features. 
+
+By the time of writing, we have applied the Single Duty Principle to refractor our code for the API Gateway. We demolished the “client” package into “caller” package which has only one duty: keep clients up to date with “Store”. The only method it exports outside is “GetClient”, and it no longer concerns the handle of request, nor does it parsing the IDL file itself, or need to explicitly concern with initializing all the clients. Its single duty is to maintain consistent client maps with what is stored in the “Store”. The “caller” package has almost become a runtime plugin to the “Store” package
+
+We have also carefully designed all the components in the API Gateway to fulfill the single duty principle, and are awarded with a clarity of mind.
+
+### Dependency Inversion Principle
+The Dependency Inversion principle states that our classes should depend upon interfaces or abstract classes instead of concrete classes and functions.
+
+The mainHandler in the proxy demonstrates the benefit of the dependency inversion principle. The generciclient.Client class (or struct) offered by Hertz does not support pointer receiver, which means that if our caller returns generciclient.Client, golang will costly create a copy of the whole struct and return the copied struct. A million calls to the GetClient method means copying the struct a million times which is unacceptable. 
+
+But fortunately the mainHandler does not depend on the “genericclient.Client” class  but (explicitly)  an interface implementing “GenericCall”. Therefore I could make a wrapper class myClient that supports a pointer receiver to solve the issue. There will be only one copy of the generciclient.Client struct per client in the main memory no matter the number of calls to the “GetClient '' method (which returns pointer pointing to a struct with the copied struct as a field)
+![image](images/image14.png) 
+
+While options like keeping a single client in the lexical scope of the returned handler (which we did in milestone 2) or include the call method in the caller package (which we considered when trying to support runtime modification of the handler) could also solve this issue, but they are rejected as they contradicts to the open closure principle and single duty principle respectively.
+
+### Do not Repeat yourself Principle
+When we feel like copying and pasting code, we refactor the code writing a reusable  function to avoid repeating ourselves. For example in the admin_test file, we group the code of making a call into the callWithBody function. It turns out this does not only reduce the amount of code, but also significantly boost the clarity of mind during debugging.
+![image](images/image15.png) 
+![image](images/image16.png) 
+## Testing:
+### Unit Testing:
+Every package has its own unit testing. We aim at full coverage.
+Eg: this is part of the test for the “ValidateBody” method in the Validator submodule
+![image](../images/image17.png) 
+
+### Integration Testing:
+With the help of the “github.com/cloudwego/hertz/pkg/common/ut" package, we can directly interact with the “Engine” component in a Hertz server and write integration tests to test the behavior of the server upon receiving a HTTP request.
+
+We provide the code for a Kitex RPC server implementing the “arithmetic.thrift”  in the “testing” folder. The RPC server needs to be on during the test. It will respond to the RPC calls made by the Hertz Engine during the test.
+![image](images/image18.png) 
+We also did some simple integration test via manually trying HTTP requests via Curl
+
+### Load Testing
+
+We did load tests via Jmeter. In the load test, we stimulate 1000 clients that incessantly sending requests for one minute (with a total of 143,996 requests)
+![image](images/image19.png) 
+
+The error leads to failure is “middlewares.go:130: [Warn] KITEX: auto retry retryable error, retry=1 error=remote or network error: get connection error: dial tcp 192.168.199.77:8385: i/o timeout”
+## Other practices:
+### Planning:
+During the period of milestone three, we adopt multiple agile development techniques in our development.They are the use of user story and task cards in place of traditional requirement documentation, test-driven development process, active refactoring and incremental development based on scenarios.
+
+When adding a new feature, we first identify a scenario in mind, then describe it,  add in details and finally craft out a set of measurable test cases. This does not only help us to be more goal oriented by having a clean end in mind, but also enables a better understanding of the requirement during the process of generating the test case.
+### Documentation:
+Refer to “User Cases and Features”, “User Documentation” and “Design Documentation”. We also have comments in the code where helpful.
+
+### Error Handling:
+We carefully differentiate errors between fatal errors and non-fatal errors to make sure that the server will only shut down when there is a fatal error.
+### Coding standard:
+https://github.com/uber-go/guide/blob/master/style.md (uber go style guide)
+### Restful API design:
+Web API design best practices - Azure Architecture Center | Microsoft Learn
+### Project layout:
+https://github.com/golang-standards/project-layout
+
