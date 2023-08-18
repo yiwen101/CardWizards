@@ -29,14 +29,7 @@ func Register(r *server.Hertz) {
 var Proxy handlerChain
 
 func init() {
-	porxyGate := newHandlerChainNode(proxyGateHandler)
-	checkContentType := newHandlerChainNode(contentTypeHandler)
-	router := newHandlerChainNode(routeHandler)
-	apiGate := newHandlerChainNode(apiGateHandler)
-	validator := newHandlerChainNode(validationGateHandler)
-	mainHander := newHandlerChainNode(mainHandler)
-
-	Proxy = makeFilterChain(porxyGate, checkContentType, router, apiGate, validator, mainHander)
+	Proxy = makeFilterChain(proxyGateHandler, contentTypeHandler, routeHandler, apiGateHandler, validationGateHandler, mainHandler)
 }
 
 type handlerChain interface {
@@ -51,8 +44,8 @@ The bool returned is false, the rest of the chain will not be executed.
 Each handlerChain node should decide whether to abort the ctx with some code or message themselves.
 */
 type baseHandler struct {
-	hander func(ctx context.Context, c *app.RequestContext, route *router.RouteData) (*router.RouteData, bool)
-	next   handlerChain
+	handler func(ctx context.Context, c *app.RequestContext, route *router.RouteData) (*router.RouteData, bool)
+	next    handlerChain
 }
 
 func (f *baseHandler) SetNext(next handlerChain) {
@@ -60,25 +53,33 @@ func (f *baseHandler) SetNext(next handlerChain) {
 }
 
 func (f *baseHandler) Serve(ctx context.Context, c *app.RequestContext, route *router.RouteData) {
-	if r, ok := f.hander(ctx, c, route); ok {
+	if r, ok := f.handler(ctx, c, route); ok {
 		if f.next != nil {
 			f.next.Serve(ctx, c, r)
 		}
 	}
 }
 
-func newHandlerChainNode(hander func(ctx context.Context, c *app.RequestContext, route *router.RouteData) (*router.RouteData, bool)) handlerChain {
-	return &baseHandler{hander: hander}
+type handler func(ctx context.Context, c *app.RequestContext, route *router.RouteData) (*router.RouteData, bool)
+
+func newHandlerChainNode(function handler) handlerChain {
+	return &baseHandler{handler: function}
 }
 
-func makeFilterChain(f ...handlerChain) handlerChain {
+func makeFilterChain(f ...handler) handlerChain {
+
 	if len(f) == 0 {
 		return nil
 	}
-	for i := 0; i < len(f)-1; i++ {
-		f[i].SetNext(f[i+1])
+	ans := make([]handlerChain, len(f))
+	for i := 0; i < len(f); i++ {
+		ans[i] = newHandlerChainNode(f[i])
 	}
-	return f[0]
+
+	for i := 0; i < len(ans)-1; i++ {
+		ans[i].SetNext(ans[i+1])
+	}
+	return ans[0]
 }
 
 func proxyGateHandler(ctx context.Context, c *app.RequestContext, route *router.RouteData) (*router.RouteData, bool) {
